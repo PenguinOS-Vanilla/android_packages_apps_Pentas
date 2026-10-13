@@ -4,11 +4,14 @@
  */
 package org.yasvara.pentas.data
 
+import android.app.GameManager
+import android.app.GameModeConfiguration
 import android.content.Context
 import android.os.Parcel
 import android.os.ServiceManager
 import android.os.UserHandle
 import android.provider.Settings
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.yasvara.pentas.data.settings.TouchSettingsStore
 import org.yasvara.pentas.display.DisplayColorManager
@@ -31,9 +34,27 @@ class PerAppSettingStore @Inject constructor(
     private val display by lazy { DisplayColorManager.get(context) }
     private fun live(pkg: String) = session.currentPackage == pkg
 
-    /** Render scale; system_server resizes the game's buffers from this key. */
+    /** Render scale; GameManagerService applies it through the game's custom game mode. */
     fun resolution(pkg: String) = io.getPerAppString(KEY_RESOLUTION, pkg, "1.0")
-    fun setResolution(pkg: String, factor: String) = io.putPerApp(KEY_RESOLUTION, pkg, factor.takeIf { it != "1.0" })
+    fun setResolution(pkg: String, factor: String) {
+        io.putPerApp(KEY_RESOLUTION, pkg, factor.takeIf { it != "1.0" })
+        applyResolution(pkg, factor.toFloatOrNull() ?: 1f)
+    }
+
+    /** Takes effect the next time the game starts; GameManagerService keeps it across reboots. */
+    private fun applyResolution(pkg: String, scale: Float) {
+        runCatching {
+            val games = context.getSystemService(GameManager::class.java) ?: return
+            if (scale < 1f) {
+                games.updateCustomGameModeConfiguration(
+                    pkg, GameModeConfiguration.Builder().setScalingFactor(scale.coerceIn(MIN_SCALE, 1f)).build(),
+                )
+                games.setGameMode(pkg, GameManager.GAME_MODE_CUSTOM)
+            } else if (games.getGameMode(pkg) == GameManager.GAME_MODE_CUSTOM) {
+                games.setGameMode(pkg, GameManager.GAME_MODE_STANDARD)
+            }
+        }.onFailure { Log.w("Pentas", "Render scale for $pkg not applied", it) }
+    }
 
     fun displayStyle(pkg: String) = io.getPerAppInt(KEY_DISPLAY_STYLE, pkg, 0)
     fun setDisplayStyle(pkg: String, mode: Int) {
@@ -84,6 +105,7 @@ class PerAppSettingStore @Inject constructor(
 
     fun removeAllForPackage(pkg: String) {
         listOf(KEY_RESOLUTION, KEY_DISPLAY_STYLE, ThermalProfiles.KEY_APP_PROFILES).forEach { io.putPerApp(it, pkg, null) }
+        applyResolution(pkg, 1f)
         touch.removeAll(pkg)
         setGpuComposition(pkg, false)
     }
@@ -92,5 +114,8 @@ class PerAppSettingStore @Inject constructor(
         const val KEY_RESOLUTION = "pentas_game_resolution"
         const val KEY_DISPLAY_STYLE = "pentas_display_style"
         const val KEY_GPU_COMPOSITION = "disable_hw_overlays_apps"
+
+        /** The smallest scaling factor GameModeConfiguration accepts. */
+        private const val MIN_SCALE = 0.1f
     }
 }

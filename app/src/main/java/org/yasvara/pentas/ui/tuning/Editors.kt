@@ -66,8 +66,6 @@ import kotlin.math.roundToInt
 private fun factor(f: Float): String =
     if (abs(f - 1f) < 0.001f) "1.0" else "%.2f".format(f).trimEnd('0').trimEnd('.').let { if ('.' in it) it else "$it.0" }
 
-private val SSAA = listOf(1.25f, 1.5f, 2f)
-
 @Composable fun LiveTag() = Tag("Live")
 @Composable fun RestartTag() = Tag("Restart", warn = true)
 
@@ -85,15 +83,9 @@ fun GraphicsEditor(pkg: String, game: Boolean = true) {
     fun commit(f: Float) { scale = f; t.perApp().setResolution(pkg, factor(f)) }
 
     if (game) Block(padding = 10.dp) {
-        SettingRow("Render resolution", tag = { LiveTag() }, value = "%.2f×".format(scale))
+        SettingRow("Render resolution", tag = { RestartTag() }, value = "%.2f×".format(scale))
         ScaleFigure(scale, screen)
         Slider(min(scale, 1f), { scale = it }, range = 0.25f..1f, steps = 14, onCommit = ::commit)
-        SettingRow("Supersampling") {}
-        Segmented(
-            listOf("Off" to 1f) + SSAA.map { "${factor(it)}×" to it },
-            selected = SSAA.firstOrNull { it == scale } ?: 1f,
-            onSelect = { if (it > 1f || scale > 1f) commit(it) },
-        )
     }
     Block(padding = 10.dp) {
         var style by remember(pkg) { mutableIntStateOf(t.perApp().displayStyle(pkg)) }

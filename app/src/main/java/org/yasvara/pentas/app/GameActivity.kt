@@ -172,7 +172,7 @@ private fun Overview(pkg: String, deps: GameDeps, onOpen: (Part) -> Unit, finish
         if (added) Text(
             "Remove from games",
             Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(cs.errorContainer)
-                .clickable { deps.system().removeGame(pkg); perApp.removeAllForPackage(pkg); finish() }
+                .clickable { perApp.removeAllForPackage(pkg); deps.system().removeGame(pkg); finish() }
                 .padding(16.dp),
             style = label(14.sp, 600), color = cs.onErrorContainer,
         )
