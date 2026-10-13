@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: The Yasvara Project
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Pentas (system_app) access to vendor types. DAC comes from mi_thermal_engine.rc.
+
+# WALT scheduler boost: /proc/sys/walt/sched_boost
+allow system_app proc_walt:dir r_dir_perms;
+allow system_app proc_walt:file rw_file_perms;
+
+# Adreno GPU control: /sys/class/kgsl/kgsl-3d0/{min,max}_clock_mhz,
+# devfreq/{min,max}_freq + governor, gpu_busy_percentage, freq tables
+allow system_app vendor_sysfs_kgsl:dir r_dir_perms;
+allow system_app vendor_sysfs_kgsl:file rw_file_perms;
+allow system_app vendor_sysfs_kgsl:lnk_file r_file_perms;
+
+# MCA charging: wired_chg_curr, smart_night (bypass charging), input_suspend
+allow system_app vendor_sysfs_xm_power:dir r_dir_perms;
+allow system_app vendor_sysfs_xm_power:file rw_file_perms;
+
+# mi_thermald battery-saver interface: /sys/class/thermal/power_save/*
+allow system_app sysfs_power_save:dir r_dir_perms;
+allow system_app sysfs_power_save:file rw_file_perms;
+
+# Display: HBM / DC dimming via /sys/class/mi_display/disp-DSI-0/disp_param
+allow system_app vendor_sysfs_displayfeature:dir r_dir_perms;
+allow system_app vendor_sysfs_displayfeature:file rw_file_perms;
+
+# Battery temperature telemetry (read-only)
+allow system_app vendor_sysfs_battery_supply:dir r_dir_perms;
+allow system_app vendor_sysfs_battery_supply:file r_file_perms;
+
+# GPU clock frequency (kgsl sysfs)
+allow system_app vendor_sysfs_kgsl_gpuclk:file r_file_perms;
+
+# OSS Pentas touch filter: /sys/devices/virtual/touch/touch_dev/
+# gamespace_touch_{profile,capabilities,stats}.  The kernel applies this to
+# the final point stream before it becomes an Android input event.
+allow system_app sysfs_gamespace_touch:dir r_dir_perms;
+allow system_app sysfs_gamespace_touch:file rw_file_perms;
+
+# Xiaomi touch feature HAL (report rate)
+typeattribute system_app hal_touchfeature_xiaomi_client;
+allow system_app hal_touchfeature_xiaomi_service:service_manager find;
+binder_call(system_app, hal_touchfeature_xiaomi_default)

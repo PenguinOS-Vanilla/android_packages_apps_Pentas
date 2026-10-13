@@ -1,0 +1,118 @@
+/*
+ * SPDX-FileCopyrightText: The Yasvara Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package org.yasvara.pentas.overlay.capture
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.Message
+import android.os.Messenger
+import android.util.Log
+
+/**
+ * Takes a screenshot through SystemUI's TakeScreenshotService, mirroring AOSP ScreenshotHelper's
+ * message contract (the service and request class are hidden, so the request is built by reflection).
+ */
+object ScreenshotUtil {
+
+    private const val SCREENSHOT_MSG_URI = 1
+    private const val SCREENSHOT_MSG_PROCESS_COMPLETE = 2
+    private const val TYPE_FULLSCREEN = 1
+    private const val SOURCE_GLOBAL_ACTIONS = 0
+
+    /** Lets hidden overlays leave the composed frame before SystemUI captures. */
+    private const val SETTLE_MS = 120L
+    private const val TIMEOUT_MS = 3000L
+
+    fun takeScreenshot(context: Context) {
+        val request = buildRequest() ?: return
+
+        val component = ComponentName(
+            "com.android.systemui",
+            "com.android.systemui.screenshot.TakeScreenshotService"
+        )
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        var unbound = false
+        var timeoutRunnable: Runnable? = null
+        var connection: ServiceConnection? = null
+
+        fun cleanup() {
+            if (!unbound) {
+                unbound = true
+                timeoutRunnable?.let(mainHandler::removeCallbacks)
+                connection?.let { runCatching { context.unbindService(it) } }
+            }
+            GameScreenshotUtil.showOverlays()
+        }
+
+        // Push every Pentas overlay window out of the next composed frame,
+        // then give SurfaceFlinger a couple of frames before the capture.
+        GameScreenshotUtil.hideOverlays()
+
+        timeoutRunnable = Runnable {
+            Log.w("ScreenshotUtil", "screenshot service timed out")
+            cleanup()
+        }
+        mainHandler.postDelayed(timeoutRunnable, TIMEOUT_MS)
+
+        val replyHandler = Handler(Looper.getMainLooper()) { msg ->
+            when (msg.what) {
+                SCREENSHOT_MSG_URI -> {
+                    Log.d("ScreenshotUtil", "screenshot saved: ${msg.obj}")
+                    cleanup()
+                }
+                SCREENSHOT_MSG_PROCESS_COMPLETE -> cleanup()
+            }
+            true
+        }
+
+        connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                if (service == null) return
+                try {
+                    val msg = Message.obtain(null, 0, request)
+                    msg.replyTo = Messenger(replyHandler)
+                    Messenger(service).send(msg)
+                } catch (e: Exception) {
+                    Log.w("ScreenshotUtil", "failed to send screenshot request", e)
+                    cleanup()
+                }
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) = cleanup()
+        }
+
+        // All terminal paths above go through cleanup(), which restores the
+        // overlays either when the image is saved or on failure.
+        mainHandler.postDelayed({
+            runCatching {
+                context.bindService(
+                    Intent().setComponent(component),
+                    connection,
+                    Context.BIND_AUTO_CREATE
+                )
+            }.onFailure {
+                Log.w("ScreenshotUtil", "bind to screenshot service failed", it)
+                cleanup()
+            }
+        }, SETTLE_MS)
+    }
+
+    private fun buildRequest(): Any? = runCatching {
+        val builderClass =
+            Class.forName("com.android.internal.util.ScreenshotRequest\$Builder")
+        val builder = builderClass
+            .getConstructor(Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            .newInstance(TYPE_FULLSCREEN, SOURCE_GLOBAL_ACTIONS)
+        builderClass.getMethod("build").invoke(builder)
+    }.onFailure {
+        Log.w("ScreenshotUtil", "buildRequest failed", it)
+    }.getOrNull()
+}

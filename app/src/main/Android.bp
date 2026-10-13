@@ -1,0 +1,60 @@
+android_app {
+    name: "Pentas",
+    platform_apis: true,
+    privileged: true,
+    system_ext_specific: true,
+    manifest: "AndroidManifest.xml",
+    certificate: "platform",
+    resource_dirs: ["res"],
+    srcs: [
+        "java/**/*.java",
+        "java/**/*.kt",
+    ],
+    static_libs: [
+        "androidx.core_core-ktx",
+        "kotlin-stdlib",
+        "kotlinx-coroutines-android",
+        "gson",
+        "hilt_android",
+        "androidx.activity_activity-compose",
+        "androidx.compose.animation_animation-core",
+        "androidx.compose.foundation_foundation",
+        "androidx.compose.material3_material3",
+        "androidx.compose.runtime_runtime",
+        "androidx.compose.ui_ui",
+        "androidx.lifecycle_lifecycle-runtime-compose",
+        "kotlinx-coroutines-core",
+        "SettingsLibDisplayUtils",
+    ],
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+        "-opt-in=kotlin.ExperimentalStdlibApi",
+        "-opt-in=kotlin.RequiresOptIn",
+    ],
+
+    plugins: [
+        "dagger2-compiler",
+    ],
+
+    required: [
+        "privapp_whitelist_org.yasvara.pentas.xml",
+        "permissions_org.yasvara.pentas.xml"
+    ],
+}
+
+prebuilt_etc_xml {
+    name: "privapp_whitelist_org.yasvara.pentas.xml",
+    src: "privapp_whitelist_org.yasvara.pentas.xml",
+    system_ext_specific: true,
+    filename_from_src: true,
+    sub_dir: "permissions",
+}
+
+prebuilt_etc_xml {
+    name: "permissions_org.yasvara.pentas.xml",
+    src: "permissions_org.yasvara.pentas.xml",
+    system_ext_specific: true,
+    filename_from_src: true,
+    sub_dir: "permissions",
+}

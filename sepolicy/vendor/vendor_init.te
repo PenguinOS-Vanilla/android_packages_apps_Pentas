@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: The Yasvara Project
+# SPDX-License-Identifier: Apache-2.0
+
+# init.rc triggers forward game properties to vendor.display.* and perf props.
+set_prop(vendor_init, vendor_display_prop)
+set_prop(vendor_init, vendor_mpctl_prop)
+
+# Pentas dynamic properties: allow vendor_init to read/set persist.sys.pentas.*
+get_prop(vendor_init, pentas_prop)
+set_prop(vendor_init, pentas_prop)
+
+# WALT scheduler boost: allow vendor_init to write /proc/sys/walt/sched_lib_name
+allow vendor_init proc_walt:file rw_file_perms;
+

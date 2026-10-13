@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: The Yasvara Project
+# SPDX-License-Identifier: Apache-2.0
+
+# MiThermal IPC: Pentas system_app (SET) <-> mi_thermal_engine vendor daemon (GET)
+system_public_prop(mithermal_prop)
+
+# Pentas dynamic properties: Pentas system_app (SET) <-> vendor_init (GET/SET)
+# for the WALT sched_lib_name watcher. Public so vendor policy can reference it.
+system_public_prop(pentas_prop)
+

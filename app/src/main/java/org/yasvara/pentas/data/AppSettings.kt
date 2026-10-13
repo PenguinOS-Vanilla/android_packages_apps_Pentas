@@ -1,0 +1,60 @@
+/*
+ * SPDX-FileCopyrightText: The Yasvara Project
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package org.yasvara.pentas.data
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
+import org.yasvara.pentas.utils.ObservablePreferences
+
+/** App preferences. Session switches are observable so the sidebar follows edits live. */
+class AppSettings(context: Context) {
+    private val db: SharedPreferences =
+        context.getSharedPreferences(context.packageName + "_preferences", Context.MODE_PRIVATE)
+
+    val observable by lazy { ObservablePreferences(db) }
+
+    /** Handle side (negative = left) and height. */
+    var x by observable.int("offset_x", 1)
+    var y by observable.int("offset_y", 200)
+
+    var stayAwake by observable.boolean(KEY_STAY_AWAKE, false)
+    val stayAwakeState get() = observable.booleanState(KEY_STAY_AWAKE, false)
+    var noAutoBrightness by observable.boolean(KEY_AUTO_BRIGHTNESS_DISABLE, true)
+    var autoDnd by observable.boolean(KEY_AUTO_DND, false)
+    var lockBottomGesture by observable.boolean(KEY_LOCK_BOTTOM_GESTURE, false)
+    var callsMode by observable.stringInt(KEY_CALLS_MODE, 0)
+    /** AudioManager ringer mode for the session; 3 keeps the current one. */
+    var ringerMode by observable.stringInt(KEY_RINGER_MODE, 3)
+
+    var bannerSource by observable.string(KEY_BANNER_SOURCE, org.yasvara.pentas.data.banner.BannerSource.DEFAULT.key)
+    var bannerAutoFetch by observable.boolean(KEY_BANNER_AUTO_FETCH, true)
+
+    var tileOrder: List<String>
+        get() = list(KEY_TILE_ORDER)
+        set(v) = db.edit { putString(KEY_TILE_ORDER, v.joinToString(",")) }
+
+    var quickToggleOrder: List<String>
+        get() = list(KEY_QUICK_TOGGLE_ORDER)
+        set(v) = db.edit { putString(KEY_QUICK_TOGGLE_ORDER, v.joinToString(",")) }
+
+    private fun list(key: String) = db.getString(key, "").orEmpty().split(',').filter { it.isNotEmpty() }
+
+    fun getString(key: String, default: String): String = db.getString(key, default) ?: default
+    fun putString(key: String, value: String) = db.edit { putString(key, value) }
+
+    companion object {
+        const val KEY_AUTO_BRIGHTNESS_DISABLE = "pentas_auto_brightness_disabled"
+        const val KEY_STAY_AWAKE = "pentas_stay_awake"
+        const val KEY_CALLS_MODE = "pentas_calls_mode"
+        const val KEY_RINGER_MODE = "pentas_ringer_mode"
+        const val KEY_LOCK_BOTTOM_GESTURE = "pentas_lock_bottom_gesture"
+        const val KEY_AUTO_DND = "pentas_auto_dnd"
+        const val KEY_BANNER_SOURCE = "pentas_banner_source"
+        const val KEY_BANNER_AUTO_FETCH = "pentas_banner_auto_fetch"
+        private const val KEY_TILE_ORDER = "tile_order"
+        private const val KEY_QUICK_TOGGLE_ORDER = "quick_toggle_order"
+    }
+}

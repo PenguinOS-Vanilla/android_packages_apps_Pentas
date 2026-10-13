@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The Yasvara Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="org.yasvara.pentas"
+    android:sharedUserId="android.uid.system">
+
+    <permission android:name="org.yasvara.pentas.permission.READ_PROCESSES" android:protectionLevel="signature|privileged" />
+    <uses-permission android:name="org.yasvara.pentas.permission.READ_PROCESSES" />
+
+    <uses-permission android:name="android.permission.GET_TASKS" />
+    <uses-permission android:name="android.permission.REAL_GET_TASKS" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <uses-permission android:name="android.permission.STATUS_BAR_SERVICE" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+    <uses-permission android:name="com.android.systemui.permission.SCREEN_RECORDING" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.MANAGE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
+    <uses-permission android:name="android.permission.MODIFY_PHONE_STATE" />
+    <uses-permission android:name="android.permission.BIND_QUICK_SETTINGS_TILE" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_ROUTING" />
+    <uses-permission android:name="android.permission.CONTROL_DISPLAY_COLOR_TRANSFORMS" />
+    <uses-permission android:name="android.permission.SET_ACTIVITY_WATCHER" />
+    <uses-permission android:name="yasvara.permission.MANAGE_LAYANG" />
+
+    <!--
+        The persistent main process runs only the thermal and clock control plane. Activities
+        and the session sidebar live in ":ui", which system_server binds per session and which
+        is otherwise cached.
+    -->
+    <application
+        android:name=".Pentas"
+        android:persistent="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/settings_title"
+        android:supportsRtl="true"
+        android:theme="@style/PentasTheme"
+        android:enableOnBackInvokedCallback="true">
+        
+        <activity
+            android:process=":ui"
+            android:name=".app.LibraryActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:process=":ui"
+            android:name=".app.SettingsActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <activity
+            android:process=":ui"
+            android:name=".app.GlobalActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
+        <activity
+            android:process=":ui"
+            android:name=".app.GameActivity"
+            android:exported="false" />
+
+        <activity
+            android:process=":ui"
+            android:name=".settings.fpsstats.FpsStatsActivity"
+            android:exported="false"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".settings.fpsstats.FpsStatsDetailActivity"
+            android:exported="false"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".settings.diagnostics.DiagnosticsActivity"
+            android:exported="false"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".thermal.custom.CustomProfileListActivity"
+            android:exported="false"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".thermal.custom.CustomProfileEditorActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".charging.ChargingProfileListActivity"
+            android:exported="false"
+            android:theme="@style/PentasTheme" />
+
+        <activity
+            android:process=":ui"
+            android:name=".charging.ChargingProfileEditorActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/PentasTheme" />
+
+        <!-- Bound by system_server once per session; not exported. -->
+        <service
+            android:name=".session.SessionService"
+            android:process=":ui"
+            android:exported="false"
+            android:configChanges="orientation|screenSize" />
+
+    </application>
+
+</manifest>

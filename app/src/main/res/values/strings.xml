@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The Yasvara Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <string name="settings_title">Pentas</string>
+    <string name="app_selector_label">Pick your game</string>
+    <string name="per_app_title">Configure Game</string>
+    <string name="tile_stay_awake">Stay awake</string>
+    <string name="tile_wifi">Wi-Fi</string>
+    <string name="tile_dnd">DND</string>
+    <string name="tile_auto_rotate">Auto Rotate</string>
+    <string name="tile_airplane_mode">Airplane Mode</string>
+    <string name="tile_bluetooth">Bluetooth</string>
+    <string name="tile_mobile_data">Mobile Data</string>
+    <string name="tile_flashlight">Flashlight</string>
+    <string name="tile_dark_mode">Dark Mode</string>
+    <string name="tile_location">Location</string>
+    <string name="tile_battery_saver">Battery Saver</string>
+    <string name="tile_hotspot">Hotspot</string>
+    <string name="tile_nfc">NFC</string>
+    <string name="tile_night_light">Night Light</string>
+    <string name="tile_data_saver">Data Saver</string>
+    <string name="tile_color_inversion">Color Inversion</string>
+    <string name="tile_usb_tether">USB Tethering</string>
+    <string name="tile_cast">Cast</string>
+    <string name="tile_screenshot">Screenshot</string>
+    <string name="tile_lock_gesture">Lock Gestures</string>
+    <string name="tile_rotation_lock">Rotation Lock</string>
+    <string name="tile_super_touch">Super Touch</string>
+    <string name="tile_widgets">Widgets</string>
+    <string name="tile_dolby">Dolby</string>
+    <string name="tile_stats_record">Record stats</string>
+</resources>

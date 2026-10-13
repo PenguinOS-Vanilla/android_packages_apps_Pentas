@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: The Yasvara Project
+# SPDX-License-Identifier: Apache-2.0
+
+# MiThermal IPC: Pentas (system_app, SET) <-> mi_thermal_engine (vendor, GET)
+persist.sys.mithermal.	u:object_r:mithermal_prop:s0
+
+# Pentas session properties read by init (persist.sys.pentas.sched_lib_extra)
+persist.sys.pentas.	u:object_r:pentas_prop:s0
+
