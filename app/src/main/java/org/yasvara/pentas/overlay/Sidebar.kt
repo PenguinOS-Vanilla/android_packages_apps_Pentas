@@ -155,11 +155,12 @@ class Sidebar @Inject constructor(
         main.postDelayed(goIdle, IDLE_MS)
     }
 
-    /** `pentas_gesture_lock = "<package>:2"` locks the home swipe for that game only. */
+    /** `ax_gaming_gesture_lock` is the platform switch DisplayPolicy reads to block the home swipe. */
     fun setGestureLock(locked: Boolean) {
         state.gestureLock.value = locked
-        val value = if (locked && pkg != null) "$pkg:2" else ""
-        Settings.Secure.putStringForUser(context.contentResolver, KEY_GESTURE_LOCK, value, UserHandle.USER_CURRENT)
+        Settings.Secure.putIntForUser(
+            context.contentResolver, KEY_GESTURE_LOCK, if (locked && pkg != null) 1 else 0, UserHandle.USER_CURRENT,
+        )
     }
 
     private fun setVisible(visible: Boolean) {
@@ -293,7 +294,7 @@ class Sidebar @Inject constructor(
     }
 
     companion object {
-        const val KEY_GESTURE_LOCK = "pentas_gesture_lock"
+        const val KEY_GESTURE_LOCK = "ax_gaming_gesture_lock"
         private const val IDLE_MS = 3000L
         private const val CLOSE_TIMEOUT_MS = 500L
     }
