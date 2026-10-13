@@ -114,7 +114,7 @@ class SessionService : Hilt_SessionService() {
         if (session.isLive) stop()
         Log.i(TAG, "Start ${SidebarMode.toString(mode)} $pkg")
         session.start(pkg, mode)
-        tweaks.restore()
+        step("tweak restore") { tweaks.restore() }
         if (mode == SidebarMode.MODE_GAME) startGame(pkg)
         sidebar.start(pkg, mode)
         publish(pkg, mode)
@@ -122,33 +122,40 @@ class SessionService : Hilt_SessionService() {
 
     /** Video and game sessions only touch the hardware for games. */
     private fun startGame(pkg: String) {
-        setBoost(true)
+        step("boost") { setBoost(true) }
         io.setProp(PROP_SCHED_LIB, pkg)
-        tweaks.apply()
-        perApp.applySession(pkg)
-        perf.applyForGame(pkg)
-        touch.onGameStart(pkg)
-        charging.applyActiveProfile(pkg)
-        wifiLock.acquire(pkg)
-        network.start(this, runCatching { packageManager.getApplicationInfo(pkg, 0).uid }.getOrDefault(0))
-        widgets.start()
-        calls.start()
-        applyDolby(pkg)
+        step("tweaks") { tweaks.apply() }
+        step("per-app settings") { perApp.applySession(pkg) }
+        step("clocks") { perf.applyForGame(pkg) }
+        step("touch") { touch.onGameStart(pkg) }
+        step("charging") { charging.applyActiveProfile(pkg) }
+        step("wifi lock") { wifiLock.acquire(pkg) }
+        step("network") {
+            network.start(this, runCatching { packageManager.getApplicationInfo(pkg, 0).uid }.getOrDefault(0))
+        }
+        step("widgets") { widgets.start() }
+        step("calls") { calls.start() }
+        step("dolby") { applyDolby(pkg) }
     }
 
     private fun stopGame(pkg: String?) {
-        recordStats(false)
-        calls.stop()
-        widgets.stop()
-        network.stop()
-        wifiLock.release()
-        charging.applyActiveProfile(null)
-        touch.onGameStop()
-        perf.applyGlobal()
-        perApp.clearSession(pkg)
-        tweaks.restore()
+        step("stats") { recordStats(false) }
+        step("calls") { calls.stop() }
+        step("widgets") { widgets.stop() }
+        step("network") { network.stop() }
+        step("wifi lock") { wifiLock.release() }
+        step("charging") { charging.applyActiveProfile(null) }
+        step("touch") { touch.onGameStop() }
+        step("clocks") { perf.applyGlobal() }
+        step("per-app settings") { perApp.clearSession(pkg) }
+        step("tweak restore") { tweaks.restore() }
         io.setProp(PROP_SCHED_LIB, "none")
-        setBoost(false)
+        step("boost") { setBoost(false) }
+    }
+
+    /** Runs one backend step; a failing backend must not take the session down with it. */
+    private inline fun step(name: String, block: () -> Unit) {
+        runCatching(block).onFailure { Log.w(TAG, "$name failed", it) }
     }
 
     /** Playback started or stopped in the same app; a game never changes mode. */

@@ -90,8 +90,16 @@ class ThermalController @Inject constructor(
     fun start() {
         if (started) return
         started = true
-        handler.post { init() }
+        handler.post { guarded("init") { init() } }
     }
+
+    /** Nothing on the control thread may take the persistent process down with it. */
+    private inline fun guarded(what: String, block: () -> Unit) {
+        runCatching(block).onFailure { Log.e(TAG, "$what failed", it) }
+    }
+
+    /** Property writes go to init over a socket and throw when it refuses them. */
+    private fun setProp(key: String, value: String) = guarded("setprop $key") { SystemProperties.set(key, value) }
 
     private fun init() {
         Log.i(TAG, "ThermalController starting (mithermald control plane)")
@@ -113,16 +121,16 @@ class ThermalController @Inject constructor(
         registerChargerReceiver()
 
         // Prime the Rust daemon
-        SystemProperties.set(ThermalProfiles.PROP_TEMP_LIMIT, tempLimit.toString())
-        SystemProperties.set(
+        setProp(ThermalProfiles.PROP_TEMP_LIMIT, tempLimit.toString())
+        setProp(
             ThermalProfiles.PROP_MAX_FCC,
             ChargingProfiles.wattToUa(chargeMaxWatt.toFloat()).toString()
         )
-        SystemProperties.set(
+        setProp(
             ThermalProfiles.PROP_MIN_FCC,
             ChargingProfiles.wattToUa(chargeMinWatt.toFloat()).toString()
         )
-        SystemProperties.set(ThermalProfiles.PROP_TEMP_OFFSET, tempOffset.toString())
+        setProp(ThermalProfiles.PROP_TEMP_OFFSET, tempOffset.toString())
 
         applyAll()
     }
@@ -184,7 +192,7 @@ class ThermalController @Inject constructor(
         // Shared with PentasService: one debounced TaskStackListener for the
         // whole process instead of a second observer doing its own binder
         // round-trip to AMS on every foreground change.
-        foregroundTracker.addListener { pkg -> handler.post { onForegroundChanged(pkg) } }
+        foregroundTracker.addListener { pkg -> handler.post { guarded("foreground change") { onForegroundChanged(pkg) } } }
         Log.i(TAG, "Foreground tracking registered for per-app profiles")
     }
 
@@ -272,7 +280,7 @@ class ThermalController @Inject constructor(
                 appliedSconfig = -1
                 activeProfileIndex = -1
                 applyGameBoost(false)
-                SystemProperties.set(ThermalProfiles.PROP_SS_PROFILE, "default")
+                setProp(ThermalProfiles.PROP_SS_PROFILE, "default")
                 Log.i(TAG, "Auto → restored sconfig=$originalSconfig ss=default")
             }
             return
@@ -288,7 +296,7 @@ class ThermalController @Inject constructor(
             activeProfileIndex = profileIndex
 
             val ssName = ThermalProfiles.PROFILE_SS_NAMES[profileIndex]
-            SystemProperties.set(ThermalProfiles.PROP_SS_PROFILE, ssName)
+            setProp(ThermalProfiles.PROP_SS_PROFILE, ssName)
 
             val boost = ThermalProfiles.isGamingSconfig(sconfig)
             applyGameBoost(boost)
@@ -317,7 +325,7 @@ class ThermalController @Inject constructor(
         // chunks land but the SS algo keeps running whichever built-in profile
         // was selected last, and the seq-bump reload path — which is gated on
         // the active name already being "custom" — never fires either.
-        SystemProperties.set(ThermalProfiles.PROP_SS_PROFILE, ThermalProfiles.SS_NAME_CUSTOM)
+        setProp(ThermalProfiles.PROP_SS_PROFILE, ThermalProfiles.SS_NAME_CUSTOM)
 
         appliedSconfig = customSconfig
         activeProfileIndex = ThermalProfiles.CUSTOM_PROFILE_BASE + arrayIndex
@@ -343,19 +351,19 @@ class ThermalController @Inject constructor(
     }
 
     private fun applyTempLimit() {
-        SystemProperties.set(ThermalProfiles.PROP_TEMP_LIMIT, tempLimit.toString())
+        setProp(ThermalProfiles.PROP_TEMP_LIMIT, tempLimit.toString())
     }
 
     private fun applyTempOffset() {
-        SystemProperties.set(ThermalProfiles.PROP_TEMP_OFFSET, tempOffset.toString())
+        setProp(ThermalProfiles.PROP_TEMP_OFFSET, tempOffset.toString())
     }
 
     /** Publishes the charge-current band as properties; the daemon owns the sysfs nodes. */
     private fun applyChargeSpeed() {
         val maxUa = ChargingProfiles.wattToUa(chargeMaxWatt.toFloat())
         val minUa = ChargingProfiles.wattToUa(chargeMinWatt.toFloat())
-        SystemProperties.set(ThermalProfiles.PROP_MAX_FCC, maxUa.toString())
-        SystemProperties.set(ThermalProfiles.PROP_MIN_FCC, minUa.toString())
+        setProp(ThermalProfiles.PROP_MAX_FCC, maxUa.toString())
+        setProp(ThermalProfiles.PROP_MIN_FCC, minUa.toString())
         Log.d(TAG, "Charge range: $chargeMinWatt-$chargeMaxWatt W ($minUa-$maxUa µA)")
     }
 
@@ -516,7 +524,7 @@ class ThermalController @Inject constructor(
     private fun registerObservers() {
         val observer = object : ContentObserver(handler) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
-                onSettingChanged(uri?.toString().orEmpty())
+                guarded("setting change") { onSettingChanged(uri?.toString().orEmpty()) }
             }
         }
         arrayOf(
@@ -540,7 +548,7 @@ class ThermalController @Inject constructor(
         resolver.registerContentObserver(
             Settings.Global.getUriFor(Settings.Global.LOW_POWER_MODE), false,
             object : ContentObserver(handler) {
-                override fun onChange(selfChange: Boolean) = onBatterySaverChanged()
+                override fun onChange(selfChange: Boolean) = guarded("battery saver change") { onBatterySaverChanged() }
             },
             UserHandle.USER_ALL
         )

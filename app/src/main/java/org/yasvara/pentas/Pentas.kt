@@ -41,8 +41,11 @@ class Pentas : Hilt_Pentas() {
         super.onCreate()
         recovery.edit { putInt(KEY_RESTARTS, 0) }
         if (getProcessName() != packageName) return
-        thermal.get().start()
-        applyGlobalClocks()
+        // The control plane must never take the persistent process down with it.
+        runCatching {
+            thermal.get().start()
+            applyGlobalClocks()
+        }.onFailure { Log.e(TAG, "Control plane failed to start", it) }
     }
 
     /**
