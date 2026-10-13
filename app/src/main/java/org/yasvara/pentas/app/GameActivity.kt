@@ -9,7 +9,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.UserHandle
 import android.provider.Settings
-import android.security.yasvara.YasvaraSpoofProfiles
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -97,7 +96,7 @@ interface GameDeps {
 
 private enum class Part(val title: String) {
     GRAPHICS("Graphics"), PERFORMANCE("Performance"), THERMAL("Thermal profile"), TOUCH("Touch"),
-    SOUND("Sound"), CHARGING("Charging"), IDENTITY("Device identity"),
+    SOUND("Sound"), CHARGING("Charging"),
 }
 
 @Composable
@@ -116,7 +115,6 @@ private fun GameScreen(pkg: String, finish: () -> Unit) {
                 Part.TOUCH -> TouchEditor(pkg, pad = false)
                 Part.SOUND -> SoundEditor(pkg)
                 Part.CHARGING -> ChargingList(pkg, deps.charging())
-                Part.IDENTITY -> IdentityList(pkg)
             }
         }
     }
@@ -167,7 +165,6 @@ private fun Overview(pkg: String, deps: GameDeps, onOpen: (Part) -> Unit, finish
             Triple(Part.SOUND, Sym.GraphicEq, null),
             Triple(Part.CHARGING, Sym.BatteryChargingFull,
                 deps.charging().getAppProfileId(pkg)?.let { id -> deps.charging().getById(id)?.name } ?: "Follow global"),
-            Triple(Part.IDENTITY, Sym.Smartphone, YasvaraSpoofProfiles.profileFor(ctx.contentResolver, pkg)?.name ?: "Real device"),
         )
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             rows.forEachIndexed { i, (p, ic, v) -> NavRow(ic, p.title, v, i, rows.size) { onOpen(p) } }
@@ -221,22 +218,6 @@ private fun ChargingList(pkg: String, repo: ChargingProfileRepository) {
                 current = id
                 repo.setAppProfileId(pkg, id)
                 repo.applyActiveProfile(pkg)
-            }
-        }
-    }
-}
-
-@Composable
-private fun IdentityList(pkg: String) {
-    val ctx = LocalContext.current
-    val all = remember { YasvaraSpoofProfiles.all(ctx.contentResolver) }
-    var current by remember { mutableStateOf(YasvaraSpoofProfiles.profileFor(ctx.contentResolver, pkg)?.id) }
-    val ids = listOf<String?>(null) + all.map { it.id }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        ids.forEachIndexed { i, id ->
-            Choice(all.firstOrNull { it.id == id }?.name ?: "Real device", id == current, i, ids.size) {
-                current = id
-                YasvaraSpoofProfiles.assign(ctx, pkg, id)
             }
         }
     }
