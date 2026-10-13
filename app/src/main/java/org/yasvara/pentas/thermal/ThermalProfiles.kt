@@ -6,7 +6,7 @@ package org.yasvara.pentas.thermal
 
 import org.yasvara.pentas.charging.ChargingProfiles
 
-/** Thermal profile catalog; sconfig values match the vendor thermal map, SS names match the daemon. */
+/** Thermal profile catalog; sconfig values match the sm8450 vendor thermal map, SS names match the daemon. */
 object ThermalProfiles {
 
     /** Settings.System keys — shared contract with SystemUI QS tiles. */
@@ -62,24 +62,27 @@ object ThermalProfiles {
     /** The SS profile name the daemon uses to load user-defined cluster curves. */
     const val SS_NAME_CUSTOM = "custom"
 
-    /** index → sconfig; -1 = Auto (don't override), -2 = Battery Saver. */
+    /**
+     * index → sconfig on the sm8450 vendor thermal map (the ids XiaomiParts writes);
+     * -1 = Auto (don't override), -2 = Battery Saver.
+     */
     val PROFILE_SCONFIG = intArrayOf(
         -1, //  0: Auto
-        0, //  1: Default (GLOBAL)
-        6, //  2: Performance (NOLIMITS)
-        19, //  3: Balanced Gaming (MGAME, throttle @36°C)
-        18, //  4: Heavy Gaming (TGAME, throttle @43.5°C)
-        20, //  5: Genshin Impact (YUANSHEN)
-        25, //  6: Honkai Star Rail (XINGTIE)
-        26, //  7: High FPS (HIGHFPS)
-        15, //  8: Camera
-        16, //  9: 4K Recording
-        11, // 10: Video
-        14, // 11: Video Chat
-        10, // 12: Navigation
-        5, // 13: Phone Call
-        9, // 14: AR/VR
-        1, // 15: Data Transfer (HUANJI)
+        0, //  1: Default (thermal-normal)
+        10, //  2: Performance (thermal-nolimits)
+        20, //  3: Balanced Gaming (thermal-mgame)
+        13, //  4: Heavy Gaming (thermal-tgame)
+        20, //  5: Genshin Impact (thermal-mgame)
+        20, //  6: Honkai Star Rail (thermal-mgame)
+        13, //  7: High FPS (thermal-tgame)
+        12, //  8: Camera (thermal-camera)
+        12, //  9: 4K Recording (thermal-camera)
+        21, // 10: Video (thermal-video)
+        4, // 11: Video Chat (thermal-videochat)
+        19, // 12: Navigation (thermal-navigation)
+        8, // 13: Phone Call (thermal-phone)
+        0, // 14: AR/VR (thermal-normal)
+        0, // 15: Data Transfer (thermal-normal)
         -2, // 16: Battery Saver (powersave_mode=1)
     )
 
@@ -101,7 +104,7 @@ object ThermalProfiles {
 
     /** Profiles that benefit from migt/metis frame boost + WALT sched boost. */
     fun isGamingSconfig(sconfig: Int): Boolean = when (sconfig) {
-        6, 18, 19, 20, 25, 26 -> true
+        10, 13, 20 -> true
         else -> false
     }
 
