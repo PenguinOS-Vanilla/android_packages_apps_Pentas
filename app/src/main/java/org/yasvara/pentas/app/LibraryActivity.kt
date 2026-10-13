@@ -61,7 +61,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.yasvara.pentas.R
 import org.yasvara.pentas.cache.BannerBitmapCache
-import org.yasvara.pentas.data.AppClassifier
 import org.yasvara.pentas.data.AppSettings
 import org.yasvara.pentas.data.SystemSettings
 import org.yasvara.pentas.data.banner.BannerSource
@@ -96,10 +95,8 @@ interface LibraryDeps {
 
 private fun gamesOf(ctx: Context, system: SystemSettings): List<String> {
     val pm = ctx.packageManager
-    val detected = if (!system.autoGameDetect) emptyList() else
-        pm.getInstalledApplications(0).filter { AppClassifier.isGame(it) && pm.getLaunchIntentForPackage(it.packageName) != null }
-            .map { it.packageName }
-    return (system.games + detected).distinct()
+    system.syncDetected(pm)
+    return system.games
         .filter { runCatching { pm.getApplicationInfo(it, 0) }.isSuccess }
         .sortedBy { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString().lowercase() }.getOrDefault(it) }
 }

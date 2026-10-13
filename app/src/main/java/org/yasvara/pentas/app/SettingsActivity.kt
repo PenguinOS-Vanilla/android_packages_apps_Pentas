@@ -8,7 +8,6 @@ import org.yasvara.pentas.ui.kit.Sym
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -85,7 +84,6 @@ import org.yasvara.pentas.charging.ChargingProfileListActivity
 import org.yasvara.pentas.data.AppSettings
 import org.yasvara.pentas.data.SystemSettings
 import org.yasvara.pentas.data.fpsstats.FpsStatsRepository
-import org.yasvara.pentas.data.AppClassifier
 import org.yasvara.pentas.settings.fpsstats.FpsStatsActivity
 import org.yasvara.pentas.thermal.ThermalProfiles
 import org.yasvara.pentas.thermal.custom.CustomProfileListActivity
@@ -119,13 +117,9 @@ private data class Overview(
 
 private fun loadOverview(context: Context): Overview {
     val pm = context.packageManager
-    val user = SystemSettings(context).games
-    val auto = Settings.System.getInt(context.contentResolver, "pentas_auto_game_detect", 1) != 0
-    val detected = if (!auto) emptyList() else
-        pm.getInstalledApplications(0)
-            .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 && AppClassifier.isGame(it) }
-            .map { it.packageName }
-    val games = (user + detected).distinct()
+    val system = SystemSettings(context)
+    system.syncDetected(pm)
+    val games = system.games
         .sortedBy { runCatching { pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString() }.getOrDefault(it) }
     val labels = games.map {
         runCatching { pm.getApplicationLabel(pm.getApplicationInfo(it, 0)).toString() }.getOrDefault(it)
