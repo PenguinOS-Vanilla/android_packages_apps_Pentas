@@ -241,13 +241,16 @@ object DeviceProfiles {
     private fun scanGpu(): GpuSpec? {
         val kgsl = File("/sys/class/kgsl/kgsl-3d0")
         if (kgsl.exists()) {
+            // Vendor sepolicy labels only some kgsl nodes, so keep the ones this process can
+            // read. gpubusy ("busy total") is the labelled counterpart of gpu_busy_percentage.
+            val busy = listOf("gpubusy", "gpu_busy_percentage").map { File(kgsl, it) }.firstOrNull { it.canRead() }
             return GpuSpec(
                 baseDir = kgsl.absolutePath,
                 curFreqPaths = listOf(
                     "${kgsl.absolutePath}/gpuclk",
                     "${kgsl.absolutePath}/devfreq/cur_freq",
-                ),
-                busyPercentPath = "${kgsl.absolutePath}/gpu_busy_percentage",
+                ).filter { File(it).canRead() },
+                busyPercentPath = busy?.absolutePath,
                 availableFreqsPath = "${kgsl.absolutePath}/gpu_available_frequencies",
                 devfreqMinPath = "${kgsl.absolutePath}/devfreq/min_freq",
                 devfreqMaxPath = "${kgsl.absolutePath}/devfreq/max_freq",
