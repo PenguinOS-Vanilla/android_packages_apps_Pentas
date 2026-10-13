@@ -5,6 +5,7 @@
 package org.yasvara.pentas.thermal
 
 import org.yasvara.pentas.charging.ChargingProfiles
+import org.yasvara.pentas.device.DeviceSupport
 
 /** Thermal profile catalog; sconfig values match the sm8450 vendor thermal map, SS names match the daemon. */
 object ThermalProfiles {
@@ -152,10 +153,14 @@ object ThermalProfiles {
         customJson: String?,
         firstName: String? = null,
         builtinIndices: List<Int> = PROFILE_NAMES.indices.toList(),
-    ): List<ProfileOption> =
-        builtinIndices.map { i ->
+    ): List<ProfileOption> {
+        val builtin = builtinIndices.map { i ->
             ProfileOption(i, if (i == 0 && firstName != null) firstName else PROFILE_NAMES[i])
-        } + parseCustomProfiles(customJson).map { ProfileOption(it.index, it.name) }
+        }
+        // Custom curves are applied by the thermal daemon.
+        if (!DeviceSupport.thermalDaemon) return builtin
+        return builtin + parseCustomProfiles(customJson).map { ProfileOption(it.index, it.name) }
+    }
 
     /** Display name for [index], custom profiles included. */
     fun nameOf(index: Int, customJson: String?): String = when {

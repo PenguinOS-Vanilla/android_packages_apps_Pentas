@@ -26,6 +26,7 @@ import javax.inject.Singleton
 import org.yasvara.pentas.charging.ChargingProfileRepository
 import org.yasvara.pentas.session.ForegroundAppTracker
 import org.yasvara.pentas.charging.ChargingProfiles
+import org.yasvara.pentas.device.DeviceSupport
 import org.yasvara.pentas.thermal.custom.CustomProfileRepository
 
 /**
@@ -232,6 +233,12 @@ class ThermalController @Inject constructor(
     /** Single entry point: applies built-in or custom (>= 1000) profiles. */
     private fun applyProfileIndex(index: Int) {
         val isCustom = index >= ThermalProfiles.CUSTOM_PROFILE_BASE
+
+        // Custom curves are applied by the thermal daemon; without it only vendor configs exist.
+        if (isCustom && !DeviceSupport.thermalDaemon) {
+            applySconfig(ThermalProfiles.PROFILE_AUTO)
+            return
+        }
 
         // Applying a custom profile re-parses the whole profile list and
         // republishes it as ~15 chunked properties, each a socket round-trip to

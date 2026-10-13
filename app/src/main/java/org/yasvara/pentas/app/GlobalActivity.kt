@@ -30,6 +30,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import org.yasvara.pentas.charging.ChargingProfileListActivity
 import org.yasvara.pentas.charging.ChargingProfileRepository
+import org.yasvara.pentas.device.DeviceSupport
 import org.yasvara.pentas.thermal.KernelNodeIO
 import org.yasvara.pentas.thermal.PerfTuner
 import org.yasvara.pentas.thermal.ThermalNodes
@@ -80,9 +81,11 @@ private fun Global(finish: () -> Unit) {
         val options = remember {
             ThermalProfiles.options(Settings.System.getStringForUser(cr, ThermalProfiles.KEY_CUSTOM_PROFILES, UserHandle.USER_CURRENT))
         }
+        val daemon = DeviceSupport.thermalDaemon
+        val thermalRows = options.size + if (daemon) 1 else 0
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             options.forEachIndexed { i, o ->
-                ListItem(o.name, Kit.connected(i, options.size + 1, 24.dp, 6.dp), Modifier.height(52.dp),
+                ListItem(o.name, Kit.connected(i, thermalRows, 24.dp, 6.dp), Modifier.height(52.dp),
                     selected = o.index == thermal,
                     trailing = if (o.index == thermal) ({ Icon(Sym.Check, null, tint = cs.onSecondaryContainer) }) else null,
                     onClick = {
@@ -90,20 +93,22 @@ private fun Global(finish: () -> Unit) {
                         Settings.System.putIntForUser(cr, ThermalProfiles.KEY_THERMAL_PROFILE, o.index, UserHandle.USER_CURRENT)
                     })
             }
-            NavRow(Sym.Add, "Custom profiles", null, options.size, options.size + 1) { CustomProfileListActivity.start(ctx) }
+            if (daemon) NavRow(Sym.Add, "Custom profiles", null, options.size, thermalRows) { CustomProfileListActivity.start(ctx) }
         }
 
-        Section("Charging")
-        val curves = remember { charging.loadAll() }
-        val ids = listOf<String?>(null) + curves.map { it.id }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            ids.forEachIndexed { i, id ->
-                ListItem(curves.firstOrNull { it.id == id }?.name ?: "Vendor default", Kit.connected(i, ids.size + 1, 24.dp, 6.dp),
-                    Modifier.height(52.dp), selected = id == curve,
-                    trailing = if (id == curve) ({ Icon(Sym.Check, null, tint = cs.onSecondaryContainer) }) else null,
-                    onClick = { curve = id; charging.setGlobalProfileId(id); charging.applyActiveProfile(null) })
+        if (daemon) {
+            Section("Charging")
+            val curves = remember { charging.loadAll() }
+            val ids = listOf<String?>(null) + curves.map { it.id }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                ids.forEachIndexed { i, id ->
+                    ListItem(curves.firstOrNull { it.id == id }?.name ?: "Vendor default", Kit.connected(i, ids.size + 1, 24.dp, 6.dp),
+                        Modifier.height(52.dp), selected = id == curve,
+                        trailing = if (id == curve) ({ Icon(Sym.Check, null, tint = cs.onSecondaryContainer) }) else null,
+                        onClick = { curve = id; charging.setGlobalProfileId(id); charging.applyActiveProfile(null) })
+                }
+                NavRow(Sym.Add, "Charging curves", null, ids.size, ids.size + 1) { ChargingProfileListActivity.start(ctx) }
             }
-            NavRow(Sym.Add, "Charging curves", null, ids.size, ids.size + 1) { ChargingProfileListActivity.start(ctx) }
         }
         if (remember { KernelNodeIO.exists(ThermalNodes.BYPASS_CHARGE) }) Block {
             SwitchRow("Bypass charging", bypass, {

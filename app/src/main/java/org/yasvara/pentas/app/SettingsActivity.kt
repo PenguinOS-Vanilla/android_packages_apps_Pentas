@@ -84,6 +84,7 @@ import org.yasvara.pentas.charging.ChargingProfileListActivity
 import org.yasvara.pentas.data.AppSettings
 import org.yasvara.pentas.data.SystemSettings
 import org.yasvara.pentas.data.fpsstats.FpsStatsRepository
+import org.yasvara.pentas.device.DeviceSupport
 import org.yasvara.pentas.settings.fpsstats.FpsStatsActivity
 import org.yasvara.pentas.thermal.ThermalProfiles
 import org.yasvara.pentas.thermal.custom.CustomProfileListActivity
@@ -174,8 +175,13 @@ private fun PentasSettingsScreen(onBack: () -> Unit) {
             SessionsCard(overview) { context.startActivity(Intent(context, FpsStatsActivity::class.java)) }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThermalCard(overview?.thermal, Modifier.weight(1f)) { CustomProfileListActivity.start(context) }
-                ChargingCard(obs, Modifier.weight(1f)) { ChargingProfileListActivity.start(context) }
+                ThermalCard(overview?.thermal, Modifier.weight(1f)) {
+                    if (DeviceSupport.thermalDaemon) CustomProfileListActivity.start(context)
+                    else context.startActivity(Intent(context, GlobalActivity::class.java))
+                }
+                if (DeviceSupport.thermalDaemon) {
+                    ChargingCard(obs, Modifier.weight(1f)) { ChargingProfileListActivity.start(context) }
+                }
             }
         }
 
