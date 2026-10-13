@@ -88,8 +88,10 @@ object Kit {
 
     /** Numbers: Google Sans Flex at ROND 100 (fully round terminals). */
     val Round: FontFamily by lazy {
-        val file = File("/system/fonts/GoogleSansFlex-Regular.ttf")
-        if (!file.exists()) Sans else FontFamily(
+        // The font ships in /system on some ROMs and in /product on others.
+        val file = listOf("/system/fonts", "/product/fonts")
+            .map { File(it, "GoogleSansFlex-Regular.ttf") }.firstOrNull { it.exists() }
+        if (file == null) Sans else FontFamily(
             listOf(400, 500, 600, 700).map { w ->
                 Font(
                     file, FontWeight(w),
