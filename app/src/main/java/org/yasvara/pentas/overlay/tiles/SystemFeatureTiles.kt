@@ -455,6 +455,9 @@ class UsbTetherTile(
         runCatching { cm.javaClass.getMethod("getTetheredIfaces") }.getOrNull()
     }
 
+    /** The Connectivity module rejects a null callback; the tile re-reads the state itself. */
+    private val tetherCallback = object : ConnectivityManager.OnStartTetheringCallback() {}
+
     override fun readEnabled(): Boolean {
         val ifaces = runCatching {
             (tetheredIfacesMethod?.invoke(cm) as? Array<*>) ?: emptyArray<Any>()
@@ -464,7 +467,7 @@ class UsbTetherTile(
 
     override fun writeEnabled(enabled: Boolean) {
         runCatching {
-            if (enabled) cm.startTethering(ConnectivityManager.TETHERING_USB, false, null)
+            if (enabled) cm.startTethering(ConnectivityManager.TETHERING_USB, false, tetherCallback)
             else cm.stopTethering(ConnectivityManager.TETHERING_USB)
         }
     }
