@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -118,6 +119,7 @@ private fun Ping() {
 @Composable
 private fun ShortcutColumn(slots: Int, close: () -> Unit) {
     val o = LocalOverlay.current
+    val ctx = LocalContext.current
     val mode = o.session.mode
     var apps by remember { mutableStateOf(emptyList<AppRef>()) }
     var rev by remember { mutableLongStateOf(0) }
@@ -128,7 +130,7 @@ private fun ShortcutColumn(slots: Int, close: () -> Unit) {
             Box(
                 Modifier.size(40.dp).clip(CircleShape).combinedClickable(
                     onLongClick = { o.shortcuts.unpin(mode, app.packageName); rev++ },
-                    onClick = { openInWindow(app.packageName); close() },
+                    onClick = { openInWindow(ctx, app.packageName); close() },
                 ),
             ) { bmp?.let { Image(it, app.label, Modifier.size(40.dp)) } }
         }

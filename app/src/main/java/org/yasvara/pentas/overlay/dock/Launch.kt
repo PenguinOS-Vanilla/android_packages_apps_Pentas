@@ -4,18 +4,29 @@
  */
 package org.yasvara.pentas.overlay.dock
 
-import android.app.yasvara.Layang
-import android.content.ComponentName
-import android.os.Bundle
-import android.os.Process
+import android.content.Context
+import android.content.Intent
+import android.os.UserHandle
 import android.util.Log
 
-/** Opens [pkg] as a Layang floating window; Layang owns size and position. */
-fun openInWindow(pkg: String) {
-    Thread {
-        val result = runCatching {
-            Layang.service()?.openApp(ComponentName(pkg, ""), Process.myUserHandle().identifier, Bundle())
-        }.getOrNull() ?: Layang.RESULT_FAILED
-        if (result != Layang.RESULT_OK) Log.w("Pentas", "Layang refused $pkg: $result")
-    }.start()
+private const val FREEFORM_PACKAGE = "com.libremobileos.freeform"
+private const val ACTION_START_FREEFORM = "com.libremobileos.freeform.START_FREEFORM"
+
+/** Opens [pkg] as an LMOFreeform floating window; LMOFreeform owns size and position. */
+fun openInWindow(context: Context, pkg: String) {
+    val activity = runCatching {
+        context.packageManager.getLaunchIntentForPackage(pkg)?.component?.className
+    }.getOrNull()
+    if (activity == null) {
+        Log.w("Pentas", "No launcher activity for $pkg")
+        return
+    }
+    runCatching {
+        context.sendBroadcast(
+            Intent(ACTION_START_FREEFORM).setPackage(FREEFORM_PACKAGE)
+                .putExtra("packageName", pkg)
+                .putExtra("activityName", activity)
+                .putExtra("userId", UserHandle.myUserId()),
+        )
+    }.onFailure { Log.w("Pentas", "Freeform launch of $pkg failed", it) }
 }

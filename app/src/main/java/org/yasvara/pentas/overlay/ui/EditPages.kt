@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -130,6 +131,7 @@ private fun Chips(tiles: List<TileAction>, selected: Boolean, onTap: (TileAction
 @Composable
 fun AppsPage() {
     val o = LocalOverlay.current
+    val ctx = LocalContext.current
     val cs = MaterialTheme.colorScheme
     val pin by o.state.appsPin
     var all by remember { mutableStateOf(emptyList<AppRef>()) }
@@ -158,7 +160,7 @@ fun AppsPage() {
                 val bmp = remember(app.packageName) { app.icon?.toBitmap(72, 72)?.asImageBitmap() }
                 Row(
                     Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(12.dp)).clickable {
-                        if (pin) o.shortcuts.pin(o.session.mode, app.packageName) else openInWindow(app.packageName)
+                        if (pin) o.shortcuts.pin(o.session.mode, app.packageName) else openInWindow(ctx, app.packageName)
                         o.state.home()
                     }.padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
