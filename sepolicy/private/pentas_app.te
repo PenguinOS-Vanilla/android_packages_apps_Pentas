@@ -32,6 +32,12 @@ allow system_app proc_pid_max:file r_file_perms;
 # Suppress non-fatal SELinux audit logs from top binary scanning process trees
 dontaudit system_app domain:file r_file_perms;
 dontaudit system_app domain:dir r_dir_perms;
+dontaudit system_app proc_slabinfo:file r_file_perms;
+
+# NetworkPingMonitor tries `ss`, which uses netlink sock_diag and falls back to
+# /proc/net/{tcp,udp}. Both are neverallowed for appdomain, so the attempts are not audited.
+dontaudit system_app self:netlink_tcpdiag_socket { create_socket_perms_no_ioctl nlmsg_read nlmsg };
+dontaudit system_app proc_net_tcp_udp:file r_file_perms;
 
 # XiaomiTouchFeatureClient probes the HIDL TouchFeature service through hwservicemanager.
 hwbinder_use(system_app)
