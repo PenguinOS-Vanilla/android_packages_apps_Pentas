@@ -42,7 +42,10 @@ allow system_app vendor_sysfs_devicetree_soc:file r_file_perms;
 allow system_app sysfs_gamespace_touch:dir r_dir_perms;
 allow system_app sysfs_gamespace_touch:file rw_file_perms;
 
-# Xiaomi touch feature HAL (report rate)
+# Xiaomi TouchFeature HAL. Newer vendor stacks expose AIDL through servicemanager;
+# Marble's vendor manifest exposes HIDL 1.0 through hwservicemanager. The HIDL
+# hwservice type only exists on some devices, so it is not named here: devices that
+# declare it with hal_attribute_hwservice() grant find to the client attribute below.
 typeattribute system_app hal_touchfeature_xiaomi_client;
 allow system_app hal_touchfeature_xiaomi_service:service_manager find;
 binder_call(system_app, hal_touchfeature_xiaomi_default)
