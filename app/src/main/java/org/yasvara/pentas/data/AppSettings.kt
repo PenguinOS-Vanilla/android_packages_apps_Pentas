@@ -30,7 +30,7 @@ class AppSettings(context: Context) {
     var callsMode by observable.stringInt(KEY_CALLS_MODE, 0)
     var callOverlay by observable.boolean(KEY_CALL_OVERLAY, true)
     var memoryManagement by observable.boolean(KEY_MEMORY_MANAGEMENT, false)
-    var cacheManagement by observable.boolean(KEY_CACHE_MANAGEMENT, true)
+    var cacheManagement by observable.boolean(KEY_CACHE_MANAGEMENT, false)
     /** AudioManager ringer mode for the session; 3 keeps the current one. */
     var ringerMode by observable.stringInt(KEY_RINGER_MODE, 3)
 

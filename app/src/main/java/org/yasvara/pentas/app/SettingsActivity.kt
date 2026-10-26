@@ -220,7 +220,7 @@ private fun PentasSettingsScreen(onBack: () -> Unit) {
             Group {
                 SwitchRow(obs, "pentas_memory_management", false, "Free memory",
                     "Close background apps when a game starts", Position.FIRST)
-                SwitchRow(obs, "pentas_cache_management", true, "Clear large caches",
+                SwitchRow(obs, "pentas_cache_management", false, "Clear large caches",
                     "Wipe the game's cache once it passes 100 MB", Position.LAST)
             }
         }

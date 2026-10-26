@@ -6,10 +6,14 @@ package org.yasvara.pentas.session
 
 import android.app.ActivityManager
 import android.app.usage.StorageStatsManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Process
+import android.os.UserHandle
 import android.os.storage.StorageManager
+import android.provider.Settings
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +45,9 @@ class GameOptimizationManager @Inject constructor(
 
     private fun clearBackgroundApps(game: String) {
         val am = context.getSystemService(ActivityManager::class.java)
-        val keep = setOf(game, context.packageName, "android")
+        // killBackgroundProcesses reaches down to SERVICE_ADJ, which includes the launcher. Killing
+        // it or the keyboard only buys a cold start when the game is left or a text field opens.
+        val keep = setOfNotNull(game, context.packageName, "android", homePackage(), imePackage())
         am.runningAppProcesses.orEmpty()
             .filter { it.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND }
             .flatMap { it.pkgList.asList() }
@@ -49,6 +55,14 @@ class GameOptimizationManager @Inject constructor(
             .filter { it !in keep }
             .forEach { am.killBackgroundProcesses(it) }
     }
+
+    private fun homePackage(): String? = context.packageManager
+        .resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY)
+        ?.activityInfo?.packageName
+
+    private fun imePackage(): String? =
+        Settings.Secure.getStringForUser(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD, UserHandle.USER_CURRENT)
+            ?.let(ComponentName::unflattenFromString)?.packageName
 
     private fun clearCacheIfLarge(pkg: String) {
         val stats = context.getSystemService(StorageStatsManager::class.java)
