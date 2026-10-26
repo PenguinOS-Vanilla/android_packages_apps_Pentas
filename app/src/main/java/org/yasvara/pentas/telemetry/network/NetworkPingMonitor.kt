@@ -4,6 +4,8 @@
  */
 package org.yasvara.pentas.telemetry.network
 
+import android.content.Context
+import android.net.ConnectivityManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.MutableState
@@ -14,7 +16,10 @@ import java.io.InputStreamReader
 import java.net.InetSocketAddress
 import java.net.Socket
 
-/** Latency to the game's servers: ICMP ping, with a TCP connect fallback. */
+/**
+ * Latency to the game's servers: ICMP ping, with a TCP connect fallback. When the game's sockets
+ * can't be seen, it measures the active network's DNS instead.
+ */
 class NetworkPingMonitor {
 
     companion object {
@@ -25,6 +30,7 @@ class NetworkPingMonitor {
         private const val MAX_SERVERS_TO_PING = 4
         private const val STABLE_THRESHOLD = 3        // good pings before slowing down
         private const val RE_RESOLVE_AFTER_FAILS = 3  // fails before re-scanning sockets
+        private const val DNS_PORT = 53
 
         /** Pre-compiled — zero allocation per parsed line. */
         private val WHITESPACE = Regex("\\s+")
@@ -45,15 +51,19 @@ class NetworkPingMonitor {
     private var monitorJob: Job? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var generation = 0L
+    @Volatile private var connectivity: ConnectivityManager? = null
+    @Volatile private var socketsHidden = false
     private var cachedServerEndpoints = emptyList<Pair<String, Int>>()
     private var consecutiveFails = 0
     private var consecutiveGood = 0
 
     // ── Lifecycle ─────────────────────────────────────────────────────
 
-    fun start(uid: Int) {
+    fun start(context: Context, uid: Int) {
         stop()
         val runGeneration = generation
+        connectivity = context.applicationContext.getSystemService(ConnectivityManager::class.java)
+        socketsHidden = false
         cachedServerEndpoints = emptyList()
         consecutiveFails = 0
         consecutiveGood = 0
@@ -145,10 +155,12 @@ class NetworkPingMonitor {
 
     // ── Server IP resolution ──────────────────────────────────────────
 
-    /** Remote endpoints belonging to this game UID. Never fall back to global sockets, DNS, or gateway IPs. */
+    /** Remote endpoints belonging to this game UID. Never borrows other apps' sockets. */
     private fun resolveServerEndpoints(uid: Int): List<Pair<String, Int>> {
         if (uid <= 0) return emptyList()
+        if (socketsHidden) return networkEndpoints()
         val endpoints = LinkedHashSet<Pair<String, Int>>(8)
+        var sockets = 0
         var proc: Process? = null
         try {
             // Android's ss does not consistently support a UID filter; -e exposes UID
@@ -157,7 +169,7 @@ class NetworkPingMonitor {
                 arrayOf("ss", "-e", "-t", "-n", "state", "established")
             )
             BufferedReader(InputStreamReader(proc.inputStream), 4096).use { reader ->
-                reader.forEachLine { line -> parseSsLine(line, uid, endpoints) }
+                reader.forEachLine { line -> if (parseSsLine(line, uid, endpoints)) sockets++ }
             }
             proc.waitFor()
         } catch (e: Exception) {
@@ -165,28 +177,48 @@ class NetworkPingMonitor {
         } finally {
             proc?.let { runCatching { it.destroyForcibly() } }
         }
+        if (sockets == 0) {
+            // system_app may neither use sock_diag nor read /proc/net (both neverallowed for app
+            // domains), so ss lists nothing at all. Stop running it and measure the network instead.
+            socketsHidden = true
+            Log.i(TAG, "ss lists no sockets; measuring the network's DNS instead")
+            return networkEndpoints()
+        }
         return endpoints.toList()
+    }
+
+    /** The active network's DNS servers, or its default gateway when it has none. */
+    private fun networkEndpoints(): List<Pair<String, Int>> {
+        val cm = connectivity ?: return emptyList()
+        val link = runCatching { cm.activeNetwork?.let { cm.getLinkProperties(it) } }.getOrNull() ?: return emptyList()
+        val dns = link.dnsServers.mapNotNull { it.hostAddress }.filterNot(::isLocalIp)
+        val targets = dns.ifEmpty {
+            listOfNotNull(link.routes.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress?.takeUnless(::isLocalIp))
+        }
+        return targets.map { it to DNS_PORT }
     }
 
     /**
      * `ss -e -t -n state established` output differs by iproute2 version: some versions
      * include the state column, others omit it when a state filter is supplied. Locate the
      * peer accordingly, and require the explicit `uid:UID` metadata before accepting it.
+     * Returns whether [line] described a socket at all, whoever owns it.
      */
-    private fun parseSsLine(line: String, uid: Int, out: MutableSet<Pair<String, Int>>) {
+    private fun parseSsLine(line: String, uid: Int, out: MutableSet<Pair<String, Int>>): Boolean {
         val trimmed = line.trim()
-        if (trimmed.isEmpty() || trimmed.startsWith("Netid") || trimmed.startsWith("State")) return
-        if (UID_FIELD.find(trimmed)?.groupValues?.getOrNull(1)?.toIntOrNull() != uid) return
+        if (trimmed.isEmpty() || trimmed.startsWith("Netid") || trimmed.startsWith("State")) return false
+        if (UID_FIELD.find(trimmed)?.groupValues?.getOrNull(1)?.toIntOrNull() != uid) return true
         val parts = trimmed.split(WHITESPACE)
-        if (parts.size < 4) return
+        if (parts.size < 4) return true
         val peerIndex = when {
             parts[0].toIntOrNull() != null -> 3 // state column omitted
             parts[0] in setOf("ESTAB", "ESTABLISHED") -> 4 // state column present
             parts[0] in setOf("tcp", "tcp4", "tcp6") -> 5 // netid and state present
-            else -> return
+            else -> return true
         }
-        val endpoint = extractEndpoint(parts.getOrNull(peerIndex) ?: return) ?: return
+        val endpoint = extractEndpoint(parts.getOrNull(peerIndex) ?: return true) ?: return true
         if (!isLocalIp(endpoint.first)) out.add(endpoint)
+        return true
     }
 
     /** Parse an ss peer token such as 203.0.113.7:443 or [2001:db8::1]:443. */
