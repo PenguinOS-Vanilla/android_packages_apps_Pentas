@@ -37,14 +37,8 @@ class CallPolicy @Inject constructor(
                     MODE_ANSWER -> runCatching { telecom.acceptRingingCall() }
                     MODE_REJECT -> runCatching { telecom.endCall() }
                 }
-                TelephonyManager.CALL_STATE_OFFHOOK -> if (settings.callsMode == MODE_ANSWER && !headset()) {
-                    audio.availableCommunicationDevices
-                        .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-                        ?.let { speakerByUs = audio.setCommunicationDevice(it) }
-                }
-                TelephonyManager.CALL_STATE_IDLE -> if (speakerByUs) {
-                    audio.clearCommunicationDevice(); speakerByUs = false
-                }
+                TelephonyManager.CALL_STATE_OFFHOOK -> if (settings.callsMode == MODE_ANSWER) speakerIfNoHeadset()
+                TelephonyManager.CALL_STATE_IDLE -> setSpeaker(false)
             }
         }
     }
@@ -55,10 +49,33 @@ class CallPolicy @Inject constructor(
     }
 
     fun stop() {
+        // A route left behind would put the next call on the speaker too.
+        setSpeaker(false)
         if (!registered) return
         runCatching { telephony.unregisterTelephonyCallback(callback) }
         registered = false
     }
+
+    /**
+     * Puts call audio on the built-in speaker, or hands routing back to the system. [CallOverlay]
+     * shares this route with Answer mode, so a call is routed once whoever gets there first.
+     * Returns whether the speaker is now ours.
+     */
+    fun setSpeaker(on: Boolean): Boolean {
+        if (on == speakerByUs) return speakerByUs
+        if (on) {
+            speakerByUs = audio.availableCommunicationDevices
+                .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                ?.let { audio.setCommunicationDevice(it) } ?: false
+        } else {
+            audio.clearCommunicationDevice()
+            speakerByUs = false
+        }
+        return speakerByUs
+    }
+
+    /** Speaker for a call taken mid-game, unless a headset already carries the audio. */
+    fun speakerIfNoHeadset(): Boolean = if (headset()) speakerByUs else setSpeaker(true)
 
     private fun headset() = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
         it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||

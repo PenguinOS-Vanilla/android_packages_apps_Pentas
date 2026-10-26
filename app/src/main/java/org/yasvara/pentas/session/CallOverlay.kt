@@ -6,8 +6,6 @@ package org.yasvara.pentas.session
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.net.Uri
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
@@ -66,10 +64,10 @@ import javax.inject.Singleton
 class CallOverlay @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: AppSettings,
+    private val calls: CallPolicy,
 ) {
     private val telephony = context.getSystemService(TelephonyManager::class.java)
     private val telecom = context.getSystemService(TelecomManager::class.java)
-    private val audio = context.getSystemService(AudioManager::class.java)
     private val wm = context.getSystemService(WindowManager::class.java)
     private var scope: CoroutineScope? = null
     private var lookup: Job? = null
@@ -77,7 +75,6 @@ class CallOverlay @Inject constructor(
     private var inCall by mutableStateOf(false)
     private var speakerOn by mutableStateOf(false)
     private var handledInSession = false
-    private var prevSpeakerphone = false
 
     @Suppress("DEPRECATION")
     private val listener = object : PhoneStateListener(context.mainExecutor) {
@@ -88,7 +85,7 @@ class CallOverlay @Inject constructor(
                 TelephonyManager.CALL_STATE_OFFHOOK -> {
                     if (handledInSession || settings.callsMode == CallPolicy.MODE_ANSWER) {
                         inCall = true
-                        enableSpeakerIfNoHeadset()
+                        speakerOn = calls.speakerIfNoHeadset()
                         if (view == null && settings.callOverlay) show(null)
                     }
                 }
@@ -128,25 +125,6 @@ class CallOverlay @Inject constructor(
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun enableSpeakerIfNoHeadset() {
-        prevSpeakerphone = audio.isSpeakerphoneOn
-        val hasHeadset = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
-            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                it.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                it.type == AudioDeviceInfo.TYPE_USB_HEADSET
-        }
-        if (!hasHeadset) {
-            runCatching { audio.mode = AudioManager.MODE_IN_COMMUNICATION }
-            audio.isSpeakerphoneOn = true
-            speakerOn = true
-        } else {
-            speakerOn = prevSpeakerphone
-        }
-    }
-
     private fun toast(res: Int, name: String) =
         Toast.makeText(context, context.getString(res, name), Toast.LENGTH_SHORT).show()
 
@@ -165,30 +143,30 @@ class CallOverlay @Inject constructor(
                 onAccept = {
                     handledInSession = true
                     inCall = true
+                    // The speaker follows on OFFHOOK.
                     runCatching { telecom.acceptRingingCall() }
-                    enableSpeakerIfNoHeadset()
                 },
-                onToggleSpeaker = {
-                    speakerOn = !speakerOn
-                    @Suppress("DEPRECATION") { audio.isSpeakerphoneOn = speakerOn }
-                },
+                onToggleSpeaker = { speakerOn = calls.setSpeaker(!speakerOn) },
                 onDecline = { runCatching { telecom.endCall() }; dismiss() },
-                onHide = ::dismiss,
+                onHide = ::hide,
             )
         }
         view = v
         runCatching { wm.addView(v, params) }.onFailure { view = null }
     }
 
-    @Suppress("DEPRECATION")
+    /** The call is over: give routing back and drop the pill. */
     private fun dismiss() {
-        lookup?.cancel()
-        if (handledInSession && speakerOn) {
-            runCatching { audio.isSpeakerphoneOn = prevSpeakerphone }
-        }
+        calls.setSpeaker(false)
         inCall = false
         speakerOn = false
         handledInSession = false
+        hide()
+    }
+
+    /** Takes the pill off screen; the call and its routing carry on. */
+    private fun hide() {
+        lookup?.cancel()
         view?.let { runCatching { wm.removeViewImmediate(it) } }
         view = null
     }
