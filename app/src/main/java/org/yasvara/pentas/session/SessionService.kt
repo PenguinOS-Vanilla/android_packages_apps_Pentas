@@ -87,6 +87,9 @@ class SessionService : Hilt_SessionService() {
         state.onGestureLock = sidebar::setGestureLock
         state.onStatsRecord = ::recordStats
         registerReceiver(screenOn, IntentFilter(Intent.ACTION_SCREEN_ON))
+        // A ":ui" death mid-game skips onDestroy, and the recreated service has no session to
+        // stop, so heads-up and the rest would stay borrowed until the next game.
+        step("tweak restore") { tweaks.restore() }
     }
 
     override fun onBind(intent: Intent): IBinder {
