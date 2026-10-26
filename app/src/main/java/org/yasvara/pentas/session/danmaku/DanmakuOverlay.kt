@@ -62,10 +62,10 @@ class DanmakuOverlay @Inject constructor(
     private var animator: ValueAnimator? = null
     private var hideRunnable: Runnable? = null
 
-    /** Starts listening. Does nothing when banners are off in settings. */
-    fun start() {
+    /** Starts listening for [game]'s session. Does nothing when banners are off in settings. */
+    fun start(game: String) {
         if (listener != null || !settings.danmaku) return
-        val l = DanmakuListener(this)
+        val l = DanmakuListener(this, game)
         try {
             l.registerAsSystemService(context, ComponentName(context, DanmakuListener::class.java), UserHandle.USER_CURRENT)
             listener = l

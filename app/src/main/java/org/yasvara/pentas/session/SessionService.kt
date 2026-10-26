@@ -142,7 +142,7 @@ class SessionService : Hilt_SessionService() {
         step("widgets") { widgets.start() }
         step("calls") { calls.start() }
         step("call overlay") { callOverlay.start() }
-        step("danmaku") { danmaku.start() }
+        step("danmaku") { danmaku.start(pkg) }
         step("dolby") { applyDolby(pkg) }
     }
 
