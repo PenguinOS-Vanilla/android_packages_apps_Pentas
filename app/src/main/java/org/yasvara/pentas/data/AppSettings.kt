@@ -26,7 +26,7 @@ class AppSettings(context: Context) {
     var autoDnd by observable.boolean(KEY_AUTO_DND, false)
     var danmaku by observable.boolean(KEY_DANMAKU, true)
     var noThreeScreenshot by observable.boolean(KEY_NO_THREE_SCREENSHOT, true)
-    var lockBottomGesture by observable.boolean(KEY_LOCK_BOTTOM_GESTURE, true)
+    var lockBottomGesture by observable.boolean(KEY_LOCK_BOTTOM_GESTURE, false)
     var callsMode by observable.stringInt(KEY_CALLS_MODE, 0)
     var callOverlay by observable.boolean(KEY_CALL_OVERLAY, true)
     var memoryManagement by observable.boolean(KEY_MEMORY_MANAGEMENT, false)
