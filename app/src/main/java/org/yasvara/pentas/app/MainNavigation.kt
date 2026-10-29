@@ -263,7 +263,7 @@ private fun SessionsTab(cachedSessions: List<SessionListItem>, onLoaded: (List<S
         }
         onLoaded(value)
     }
-    val recent = sessions.sortedByDescending { it.startTimeMs }
+    val recent = remember(sessions) { sessions.sortedByDescending { it.startTimeMs } }
     Screen("Sessions", onBack = null, bottomBar = true) {
         Text("Your recorded play sessions", style = label(14.sp), color = cs.onSurfaceVariant,
             modifier = Modifier.padding(start = 4.dp, bottom = 10.dp))

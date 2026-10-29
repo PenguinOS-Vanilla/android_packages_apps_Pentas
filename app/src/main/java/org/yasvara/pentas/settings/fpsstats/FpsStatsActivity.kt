@@ -41,6 +41,9 @@ import org.yasvara.pentas.ui.theme.PentasTheme
 import org.yasvara.pentas.app.pressable
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint(ComponentActivity::class)
 class FpsStatsActivity : Hilt_FpsStatsActivity() {
@@ -77,10 +80,19 @@ fun FpsStatsListScreen(
     onSessionClick: (String) -> Unit,
     packageManager: PackageManager,
 ) {
-    var sessions by remember { mutableStateOf(repository.listSessions()) }
+    var sessions by remember { mutableStateOf(emptyList<SessionListItem>()) }
+    var loaded by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<SessionListItem?>(null) }
     val view = LocalView.current
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { sessions = repository.listSessions() }
+    val scope = rememberCoroutineScope()
+    // The index lives on disk; read it off the main thread.
+    fun reload(before: () -> Unit = {}) {
+        scope.launch {
+            sessions = withContext(Dispatchers.IO) { before(); repository.listSessions() }
+            loaded = true
+        }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload() }
 
     pendingDelete?.let { session ->
         AlertDialog(
@@ -90,8 +102,7 @@ fun FpsStatsListScreen(
             confirmButton = {
                 TextButton(onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    repository.deleteSession(session.id)
-                    sessions = repository.listSessions()
+                    reload { repository.deleteSession(session.id) }
                     pendingDelete = null
                 }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
             },
@@ -146,7 +157,7 @@ fun FpsStatsListScreen(
             }
 
             // Sessions
-            if (sessions.isEmpty()) {
+            if (loaded && sessions.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier

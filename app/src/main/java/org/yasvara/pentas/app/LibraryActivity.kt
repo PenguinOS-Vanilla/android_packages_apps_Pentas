@@ -126,10 +126,18 @@ internal fun Library(cachedGames: List<String>, onLoaded: (List<String>) -> Unit
         onLoaded(value)
     }
     val live = remember(rev) { Settings.System.getString(ctx.contentResolver, SessionService.KEY_SESSION_LIVE).orEmpty() }
+    // Search runs on every keystroke; resolve labels once per library load, off the main thread.
+    val labels by produceState(emptyMap<String, String>(), games) {
+        value = withContext(Dispatchers.IO) {
+            val pm = ctx.packageManager
+            games.associateWith { pkg ->
+                runCatching { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+            }
+        }
+    }
     val ordered = if (live in games) listOf(live) + games.filterNot { it == live } else games
     val shown = if (query.isBlank()) ordered else ordered.filter { pkg ->
-        runCatching { ctx.packageManager.getApplicationLabel(ctx.packageManager.getApplicationInfo(pkg, 0)).toString() }
-            .getOrDefault(pkg).contains(query, ignoreCase = true)
+        (labels[pkg] ?: pkg).contains(query, ignoreCase = true)
     }
     Screen("Games", onBack = null, bottomBar = true, actions = {
         RoundButton(R.drawable.sym_tune, "Global clocks", { ctx.startActivity(Intent(ctx, GlobalActivity::class.java)) }, size = 40.dp)

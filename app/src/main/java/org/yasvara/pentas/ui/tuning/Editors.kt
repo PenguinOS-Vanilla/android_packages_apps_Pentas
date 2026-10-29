@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -281,19 +283,20 @@ fun ClockEditor(
         showClockConfirmation = false
     }
 
-    LaunchedEffect(perf) {
-        while (true) {
-            val hardware = withContext(Dispatchers.IO) {
-                val cpus = perf.cpuClusters.filter { it.availableKhz.size > 1 }
-                Triple(cpus, perf.gpuInfo, cpus.associate { it.policyIndex to perf.canTuneCpuRange(it) } to perf.canTuneGpuRange())
-            }
-            cpuRanges = hardware.first
-            gpuInfo = hardware.second
-            writableCpu = hardware.third.first
-            writableGpu = hardware.third.second
-            capabilitiesReady = true
-            delay(15_000)
+    // Write access only changes with the ROM or SELinux policy: check on entry and on resume,
+    // not on a timer, so denied nodes are not reopened every few seconds.
+    var probe by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { probe++ }
+    LaunchedEffect(perf, probe) {
+        val hardware = withContext(Dispatchers.IO) {
+            val cpus = perf.cpuClusters.filter { it.availableKhz.size > 1 }
+            Triple(cpus, perf.gpuInfo, cpus.associate { it.policyIndex to perf.canTuneCpuRange(it) } to perf.canTuneGpuRange())
         }
+        cpuRanges = hardware.first
+        gpuInfo = hardware.second
+        writableCpu = hardware.third.first
+        writableGpu = hardware.third.second
+        capabilitiesReady = true
     }
     LaunchedEffect(perf) {
         while (true) {

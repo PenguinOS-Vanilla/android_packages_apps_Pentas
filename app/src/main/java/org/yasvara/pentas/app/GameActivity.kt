@@ -159,6 +159,12 @@ private fun Overview(
             }
         }
     }
+    // The render scale is read back from GameManager, a binder call; keep it off composition.
+    val graphicsSummary by produceState("Checking…", pkg, refreshKey) {
+        value = withContext(Dispatchers.IO) {
+            deps.perApp().resolution(pkg).let { if (it == "1.0") "Native" else "${it}×" }
+        }
+    }
     val soundSummary by produceState("Checking profile…", pkg, refreshKey) {
         value = withContext(Dispatchers.IO) {
             when (val backend = DolbyBridge.backend(ctx)) {
@@ -219,10 +225,9 @@ private fun Overview(
             )
         }
         val perApp = deps.perApp()
-        val scale = perApp.resolution(pkg)
         val customJson = Settings.System.getStringForUser(ctx.contentResolver, ThermalProfiles.KEY_CUSTOM_PROFILES, UserHandle.USER_CURRENT)
         val rows = listOfNotNull(
-            Triple(Part.GRAPHICS, Sym.AspectRatio, if (scale == "1.0") "Native" else "${scale}×"),
+            Triple(Part.GRAPHICS, Sym.AspectRatio, graphicsSummary),
             Triple(Part.PERFORMANCE, Sym.Speed, clockSummary),
             Triple(Part.THERMAL, Sym.Thermostat, ThermalProfiles.nameOf(ThermalProfiles.canonicalIndex(perApp.thermalProfile(pkg)), customJson)),
             Triple(Part.TOUCH, Sym.TouchApp, null),

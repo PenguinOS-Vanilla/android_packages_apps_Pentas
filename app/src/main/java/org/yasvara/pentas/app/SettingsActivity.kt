@@ -202,7 +202,13 @@ internal fun PentasSettingsScreen(onBack: () -> Unit, showBack: Boolean = true) 
         }
 
         item { SectionLabel("Library") }
-        item { LibraryCard(overview?.library) { context.startActivity(Intent(context, LibraryActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)) } }
+        item {
+            LibraryCard(overview?.library) {
+                // Inside the main tabs the library is a swipe away; relaunching would reset them.
+                if (!showBack) onBack()
+                else context.startActivity(Intent(context, LibraryActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            }
+        }
 
         item { SectionLabel("Performance") }
         item {
