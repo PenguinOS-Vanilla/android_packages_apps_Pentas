@@ -78,23 +78,12 @@ data class DeviceProfile(
             ?.tempPath
 
     private val boardTempZone: ThermalZoneSpec?
-        get() = thermalZones.firstOrNull {
-            val type = it.type.lowercase()
-            type.contains("board") || type.contains("pmic") || type.contains("batt_therm") ||
-                type.startsWith("soc")
-        }
+        get() = BoardSensor.pick(thermalZones)
 
     /** A board/PMIC sensor when the kernel publishes one; never substitute another zone by index. */
     val boardTempPath: String? get() = boardTempZone?.tempPath
 
-    val boardTempLabel: String? get() = boardTempZone?.type?.lowercase()?.let { type ->
-        when {
-            type.contains("pmic") || type.startsWith("pm") -> "PMIC"
-            type.contains("batt") -> "Battery"
-            type.contains("soc") -> "SoC"
-            else -> "Board"
-        }
-    }
+    val boardTempLabel: String? get() = boardTempZone?.type?.let(BoardSensor::label)
 
     val primaryCpuPolicyDir: String?
         get() = cpuClusters.lastOrNull()?.policyDir
