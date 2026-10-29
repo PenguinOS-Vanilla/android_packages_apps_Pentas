@@ -140,7 +140,7 @@ private fun loadOverview(context: Context): Overview {
     val sessions = runCatching { FpsStatsRepository(context).listSessions() }.getOrDefault(emptyList())
     val cr = context.contentResolver
     val thermal = ThermalProfiles.nameOf(
-        Settings.System.getInt(cr, ThermalProfiles.KEY_THERMAL_PROFILE, 0),
+        ThermalProfiles.canonicalIndex(Settings.System.getInt(cr, ThermalProfiles.KEY_THERMAL_PROFILE, 0)),
         Settings.System.getString(cr, ThermalProfiles.KEY_CUSTOM_PROFILES),
     )
     return Overview(

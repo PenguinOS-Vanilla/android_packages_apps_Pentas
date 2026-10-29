@@ -224,7 +224,7 @@ private fun Overview(
         val rows = listOfNotNull(
             Triple(Part.GRAPHICS, Sym.AspectRatio, if (scale == "1.0") "Native" else "${scale}×"),
             Triple(Part.PERFORMANCE, Sym.Speed, clockSummary),
-            Triple(Part.THERMAL, Sym.Thermostat, ThermalProfiles.nameOf(perApp.thermalProfile(pkg), customJson)),
+            Triple(Part.THERMAL, Sym.Thermostat, ThermalProfiles.nameOf(ThermalProfiles.canonicalIndex(perApp.thermalProfile(pkg)), customJson)),
             Triple(Part.TOUCH, Sym.TouchApp, null),
             Triple(Part.SOUND, Sym.GraphicEq, soundSummary),
             if (DeviceSupport.thermalDaemon) Triple(Part.CHARGING, Sym.BatteryChargingFull,
@@ -261,7 +261,7 @@ private fun Choice(title: String, selected: Boolean, index: Int, count: Int, onC
 @Composable
 private fun ThermalList(pkg: String, perApp: PerAppSettingStore) {
     val ctx = LocalContext.current
-    var current by remember { mutableIntStateOf(perApp.thermalProfile(pkg)) }
+    var current by remember { mutableIntStateOf(ThermalProfiles.canonicalIndex(perApp.thermalProfile(pkg))) }
     val options = remember {
         ThermalProfiles.options(
             Settings.System.getStringForUser(ctx.contentResolver, ThermalProfiles.KEY_CUSTOM_PROFILES, UserHandle.USER_CURRENT),

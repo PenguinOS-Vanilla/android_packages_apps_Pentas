@@ -61,7 +61,7 @@ private val DEFAULT_PINS = listOf(
 )
 
 /** Profiles worth offering in a game; scenes like Camera or Navigation are left out. */
-private val GAME_SCENES = listOf(0, 16, 3, 4, 2, 7, 5, 6, 1)
+private val GAME_SCENES = listOf(0, 16, 3, 4, 2, 1)
 
 private class ThermalModel(val options: List<ThermalProfiles.ProfileOption>, val pins: List<Int>)
 
@@ -99,7 +99,7 @@ fun ThermalSwitcher() {
     val pkg = o.pkg ?: return
     val (model, _) = rememberThermal()
     var current by o.state.profile
-    androidx.compose.runtime.LaunchedEffect(pkg) { current = o.perApp.thermalProfile(pkg) }
+    androidx.compose.runtime.LaunchedEffect(pkg) { current = ThermalProfiles.canonicalIndex(o.perApp.thermalProfile(pkg)) }
     fun pick(i: Int) {
         current = i
         o.perApp.setThermalProfile(pkg, i)

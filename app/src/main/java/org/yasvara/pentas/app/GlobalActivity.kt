@@ -68,7 +68,10 @@ private fun Global(finish: () -> Unit) {
     val perf = deps.perf()
     val charging = deps.charging()
     var clocks by remember { mutableStateOf(perf.loadGlobalProfile()) }
-    var thermal by remember { mutableIntStateOf(Settings.System.getIntForUser(cr, ThermalProfiles.KEY_THERMAL_PROFILE, 0, UserHandle.USER_CURRENT)) }
+    var thermal by remember {
+        mutableIntStateOf(ThermalProfiles.canonicalIndex(
+            Settings.System.getIntForUser(cr, ThermalProfiles.KEY_THERMAL_PROFILE, 0, UserHandle.USER_CURRENT)))
+    }
     var curve by remember { mutableStateOf(charging.getGlobalProfileId()) }
     var bypass by remember { mutableStateOf(Settings.System.getIntForUser(cr, ThermalProfiles.KEY_BYPASS_CHARGING, 0, UserHandle.USER_CURRENT) == 1) }
     Screen("Global", onBack = finish) {

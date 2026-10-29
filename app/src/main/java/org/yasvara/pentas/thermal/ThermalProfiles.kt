@@ -164,6 +164,15 @@ object ThermalProfiles {
         16, // Battery Saver (-2)
     )
 
+    /** The hidden presets above, keyed to the shown preset with the same sconfig. */
+    private val ALIAS_OF = mapOf(5 to 3, 6 to 3, 7 to 4, 9 to 8, 14 to 1, 15 to 1)
+
+    /**
+     * The preset a picker should show for a stored [index]. A game saved on a hidden alias
+     * keeps its stored value, and still shows as selected.
+     */
+    fun canonicalIndex(index: Int): Int = ALIAS_OF[index] ?: index
+
     /**
      * Built-in scenes plus custom profiles. [firstName] renames index 0 ("Auto" globally,
      * "Follow global" per app); [builtinIndices] restricts the built-ins.
