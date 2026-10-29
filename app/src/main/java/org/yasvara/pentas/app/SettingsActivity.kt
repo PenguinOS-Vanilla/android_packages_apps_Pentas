@@ -239,7 +239,7 @@ internal fun PentasSettingsScreen(onBack: () -> Unit, showBack: Boolean = true) 
                 SegmentRow(obs, "pentas_ringer_mode", "3", "Ringer",
                     listOf("0" to "Silent", "1" to "Vibrate", "2" to "Sound", "3" to "Keep"))
                 SwitchRow(obs, "pentas_lock_bottom_gesture", false, "Lock home swipe",
-                    "Swipe up twice within 1.5 s to leave. Side back always works")
+                    "Blocks the swipe that reveals the navigation bar in full-screen games. Side back still works")
                 SwitchRow(obs, "pentas_no_three_screenshot", true, "Block three-finger screenshot",
                     "Stops the gesture from firing mid-game")
                 SwitchRow(obs, "pentas_stay_awake", false, "Keep screen on", null)
