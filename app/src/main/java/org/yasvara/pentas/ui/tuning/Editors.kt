@@ -560,8 +560,7 @@ fun SoundEditor(pkg: String?) {
         Text(if (st.backend == DolbyBridge.Backend.LUNARIS) "Used across apps."
             else "Used when this game has no assigned profile.",
             style = label(11.sp), color = cs.onSurfaceVariant)
-        Segmented(profileOptions.take(3), st.homeProfile, dolby::setProfile)
-        Segmented(profileOptions.drop(3), st.homeProfile, dolby::setProfile)
+        profileOptions.balancedRows().forEach { row -> Segmented(row, st.homeProfile, dolby::setProfile) }
         Text("More sound controls", Modifier.clickable { DolbyBridge.openSettings(ctx) },
             style = label(12.sp, 650), color = cs.primary)
     }
@@ -578,21 +577,16 @@ fun SoundEditor(pkg: String?) {
             else "Automatic switching is off in Dolby settings.",
             style = label(11.sp),
             color = if (assignment.monitoringEnabled) cs.onSurfaceVariant else cs.error)
-        Segmented(listOf("Follow default" to DolbyProfileClient.PROFILE_DEFAULT) +
-            profileOptions.take(2), assignment.profile, onSelect = { selected ->
-                scope.launch {
-                    assignment = withContext(Dispatchers.IO) {
-                        DolbyProfileClient.setProfile(ctx, pkg, selected)
+        (listOf("Follow default" to DolbyProfileClient.PROFILE_DEFAULT) + profileOptions).balancedRows()
+            .forEach { row ->
+                Segmented(row, assignment.profile, onSelect = { selected ->
+                    scope.launch {
+                        assignment = withContext(Dispatchers.IO) {
+                            DolbyProfileClient.setProfile(ctx, pkg, selected)
+                        }
                     }
-                }
-            })
-        Segmented(profileOptions.drop(2), assignment.profile, onSelect = { selected ->
-            scope.launch {
-                assignment = withContext(Dispatchers.IO) {
-                    DolbyProfileClient.setProfile(ctx, pkg, selected)
-                }
+                })
             }
-        })
         if (!assignment.monitoringEnabled) {
             Text("Set up automatic profiles", Modifier.clickable { DolbyBridge.openSettings(ctx) },
                 style = label(12.sp, 650), color = cs.primary)

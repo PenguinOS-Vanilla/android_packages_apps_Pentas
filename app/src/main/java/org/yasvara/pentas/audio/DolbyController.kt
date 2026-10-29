@@ -45,8 +45,9 @@ class DolbyController @Inject constructor(
             override fun onChange(selfChange: Boolean) = refresh()
         }
         when (_state.value.backend) {
-            DolbyBridge.Backend.XIAOMI -> context.contentResolver.registerContentObserver(
-                DolbyBridge.URI, false, observer)
+            DolbyBridge.Backend.XIAOMI -> DolbyBridge.controlUri(context)?.let {
+                context.contentResolver.registerContentObserver(it, false, observer)
+            }
             DolbyBridge.Backend.LUNARIS -> {
                 context.contentResolver.registerContentObserver(
                     Settings.Global.getUriFor(DolbyBridge.SETTINGS_DAP_ACTIVE), false, observer)

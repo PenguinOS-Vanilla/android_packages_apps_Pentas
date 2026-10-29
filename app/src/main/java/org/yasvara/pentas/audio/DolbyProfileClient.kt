@@ -7,7 +7,7 @@ package org.yasvara.pentas.audio
 import android.content.Context
 import android.os.Bundle
 
-/** Per-app assignments owned and applied by XiaomiDolby's optional profile service. */
+/** Per-app assignments owned and applied by the Dolby app's optional profile service. */
 object DolbyProfileClient {
     const val PROFILE_DEFAULT = -1
     private val XIAOMI_OPTIONS = listOf(
@@ -24,13 +24,18 @@ object DolbyProfileClient {
         "Game" to DolbyBridge.PROFILE_GAME,
     )
 
-    fun optionsFor(backend: DolbyBridge.Backend): List<Pair<String, Int>> =
-        if (backend == DolbyBridge.Backend.LUNARIS) LUNARIS_OPTIONS else XIAOMI_OPTIONS
+    /** A provider's own list wins: LunarisDolby numbers its seven profiles differently. */
+    fun optionsFor(backend: DolbyBridge.Backend): List<Pair<String, Int>> = when (backend) {
+        DolbyBridge.Backend.LUNARIS -> LUNARIS_OPTIONS
+        else -> DolbyBridge.providerProfiles ?: XIAOMI_OPTIONS
+    }
 
     data class Assignment(val profile: Int = PROFILE_DEFAULT, val monitoringEnabled: Boolean = false)
 
     fun getProfile(context: Context, pkg: String): Assignment {
         if (DolbyBridge.backend(context) != DolbyBridge.Backend.XIAOMI) return Assignment()
+        // Callers label the result through optionsFor(), so load the provider's list first.
+        if (DolbyBridge.providerProfiles == null) DolbyBridge.status(context)
         val reply = DolbyBridge.call(context, "get_app_profile", pkg) ?: return Assignment()
         return Assignment(reply.getInt("profile", PROFILE_DEFAULT),
             reply.getBoolean("app_profiles_enabled"))

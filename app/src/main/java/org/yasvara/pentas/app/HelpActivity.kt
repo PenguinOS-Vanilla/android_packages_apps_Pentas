@@ -142,7 +142,7 @@ private val helpTopics = listOf(
         "Pentas can select supported Dolby profiles; Dolby's own app remains the place for its detailed sound controls.",
         listOf(
             "Open a game's Sound controls and choose a profile, or leave it on Follow global/default.",
-            "The Xiaomi Dolby integration appears only when its control provider is installed and available. Dolby's advanced equalizer and sound options stay in the Dolby app.",
+            "Dolby controls appear only when the installed Dolby app provides its control interface. Dolby's advanced equalizer and sound options stay in the Dolby app.",
             "Automatic per-app switching requires App Profile monitoring in Dolby and Usage Access. If those are off, enable them in Dolby before expecting automatic switching.",
         ), "dolby audio sound xiaomi dynamic music movie game usage access monitoring",
     ),

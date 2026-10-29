@@ -16,15 +16,23 @@ import android.util.Log
 /** Controls the installed Dolby implementation without attaching to its effect. */
 object DolbyBridge {
     private const val TAG = "DolbyBridge"
-    private const val CONTROL_AUTHORITY = "co.aospa.dolby.xiaomi.control"
+    /** XiaomiDolby first, then LunarisDolby; both speak the same control contract. */
+    private val CONTROL_AUTHORITIES = listOf("co.aospa.dolby.xiaomi.control", "org.lunaris.dolby.control")
     private const val LUNARIS_PACKAGE = "org.lunaris.dolby"
     private const val LUNARIS_RECEIVER = "org.lunaris.dolby.receiver.DolbyControlReceiver"
     private const val LUNARIS_SET_ENABLED = "org.lunaris.dolby.action.SET_ENABLED"
     private const val LUNARIS_SET_PROFILE = "org.lunaris.dolby.action.SET_PROFILE"
     const val SETTINGS_DAP_ACTIVE = "dolby_dap_active"
     const val SETTINGS_PROFILE_ACTIVE = "dolby_profile_active"
-    val URI: Uri = Uri.parse("content://$CONTROL_AUTHORITY")
 
+    /** Resolved once per process; cleared when a call fails so the next one looks again. */
+    @Volatile private var authority: String? = null
+
+    /** The profile list the provider reports, when it reports one; see [DolbyProfileClient.optionsFor]. */
+    @Volatile var providerProfiles: List<Pair<String, Int>>? = null
+        private set
+
+    /** [XIAOMI] is any app serving a control provider, LunarisDolby included; [LUNARIS] is its legacy broadcasts. */
     enum class Backend { NONE, XIAOMI, LUNARIS }
 
     const val PROFILE_DYNAMIC = 0
@@ -45,11 +53,19 @@ object DolbyBridge {
     )
 
     @Suppress("DEPRECATION")
-    private fun controlProvider(context: Context) =
-        context.packageManager.resolveContentProvider(CONTROL_AUTHORITY, 0)
+    private fun controlProvider(context: Context, authority: String) =
+        context.packageManager.resolveContentProvider(authority, 0)
+
+    private fun controlAuthority(context: Context): String? {
+        authority?.let { return it }
+        return CONTROL_AUTHORITIES.firstOrNull { controlProvider(context, it) != null }
+            .also { authority = it }
+    }
+
+    fun controlUri(context: Context): Uri? = controlAuthority(context)?.let { Uri.parse("content://$it") }
 
     fun backend(context: Context): Backend {
-        if (controlProvider(context) != null) return Backend.XIAOMI
+        if (controlAuthority(context) != null) return Backend.XIAOMI
         return try {
             context.packageManager.getPackageInfo(LUNARIS_PACKAGE, 0)
             Backend.LUNARIS
@@ -65,6 +81,11 @@ object DolbyBridge {
             Backend.XIAOMI -> {
                 val reply = call(context, "get_state")
                     ?: return Status(available = true, backend = Backend.XIAOMI)
+                val values = reply.getIntArray("profile_values")
+                val names = reply.getStringArray("profile_names")
+                if (values != null && names != null && values.size == names.size && values.isNotEmpty()) {
+                    providerProfiles = names.zip(values.toList())
+                }
                 Status(
                     available = true,
                     ready = reply.getBoolean("ready"),
@@ -122,7 +143,7 @@ object DolbyBridge {
 
     fun openSettings(context: Context) {
         val packageName = when (backend(context)) {
-            Backend.XIAOMI -> controlProvider(context)?.packageName
+            Backend.XIAOMI -> controlAuthority(context)?.let { controlProvider(context, it) }?.packageName
             Backend.LUNARIS -> LUNARIS_PACKAGE
             Backend.NONE -> null
         } ?: return
@@ -156,11 +177,14 @@ object DolbyBridge {
 
     internal fun call(context: Context, method: String, arg: String? = null,
         extras: Bundle? = null): Bundle? = try {
-        context.contentResolver.call(URI, method, arg, extras)?.takeIf {
-            it.getBoolean("success", false)
+        controlUri(context)?.let { uri ->
+            context.contentResolver.call(uri, method, arg, extras)?.takeIf {
+                it.getBoolean("success", false)
+            }
         }
     } catch (exception: RuntimeException) {
         Log.w(TAG, "Dolby $method failed", exception)
+        authority = null
         null
     }
 }
