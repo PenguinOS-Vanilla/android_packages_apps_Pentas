@@ -186,6 +186,7 @@ internal fun PentasSettingsScreen(onBack: () -> Unit, showBack: Boolean = true) 
 
         item {
             val cs = MaterialTheme.colorScheme
+            Spacer(Modifier.height(12.dp))
             BentoCard(Modifier.fillMaxWidth(), onClick = {
                 context.startActivity(Intent(context, HelpActivity::class.java))
             }) {
