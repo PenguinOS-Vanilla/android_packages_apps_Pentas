@@ -268,8 +268,10 @@ fun ClockEditor(
     val context = LocalContext.current
     val perfPrefs = remember(context) { context.getSharedPreferences("perf_tuner_ui", Context.MODE_PRIVATE) }
     val scopeKey = warningKey.toString()
+    // A saved custom profile is still applied in game, so it counts as enabled even
+    // when it predates the switch.
     var tuningEnabled by remember(scopeKey, profile) {
-        mutableStateOf(!profile.isDefault && perfPrefs.getBoolean("manual_tuning_$scopeKey", false))
+        mutableStateOf(perfPrefs.getBoolean("manual_tuning_$scopeKey", false) || !profile.isDefault)
     }
     var showEnableCautionDialog by remember { mutableStateOf(false) }
     var draftProfile by remember(profile) { mutableStateOf(profile) }
@@ -304,6 +306,15 @@ fun ClockEditor(
         showClockConfirmation = false
     }
 
+    // Going back to stock needs no warning, and must not be left half done by a Cancel.
+    fun disableTuning() {
+        tuningEnabled = false
+        perfPrefs.edit().putBoolean("manual_tuning_$scopeKey", false).apply()
+        draftProfile = PerfTuner.PerfProfile()
+        showClockConfirmation = false
+        onCommit(PerfTuner.PerfProfile())
+    }
+
     // Write access only changes with the ROM or SELinux policy: check on entry and on resume,
     // not on a timer, so denied nodes are not reopened every few seconds.
     var probe by remember { mutableIntStateOf(0) }
@@ -335,13 +346,7 @@ fun ClockEditor(
                 "Manual clock tuning",
                 tuningEnabled,
                 onChange = { enable ->
-                    if (enable) {
-                        showEnableCautionDialog = true
-                    } else {
-                        tuningEnabled = false
-                        perfPrefs.edit().putBoolean("manual_tuning_$scopeKey", false).apply()
-                        applyClockChange(PerfTuner.PerfProfile())
-                    }
+                    if (enable) showEnableCautionDialog = true else disableTuning()
                 },
                 tag = { if (tuningEnabled) Tag("Active", warn = true) else Tag("Default (Safe)") },
             )
@@ -360,7 +365,7 @@ fun ClockEditor(
     if (cpuRanges.isNotEmpty()) Block(padding = 10.dp) {
         cpuRanges.forEach { c ->
             val t = draftProfile.clusters[c.policyIndex] ?: PerfTuner.ClusterTuning()
-            val accessGranted = if (capabilitiesReady) (writableCpu[c.policyIndex] == true && tuningEnabled) else null
+            val accessGranted = if (capabilitiesReady) writableCpu[c.policyIndex] == true else null
             ClockRange(
                 c.name, c.availableKhz, t.minKhz ?: c.hwMinKhz, t.maxKhz ?: c.hwMaxKhz, live[c.policyIndex] ?: 0L,
                 editable && tuningEnabled && writableCpu[c.policyIndex] == true, accessGranted,
@@ -374,7 +379,7 @@ fun ClockEditor(
     val gpu = gpuInfo
     if (hasGpuRange) Block(padding = 10.dp) {
         val detectedGpu = requireNotNull(gpu)
-        val gpuAccess = if (capabilitiesReady) (writableGpu && tuningEnabled) else null
+        val gpuAccess = if (capabilitiesReady) writableGpu else null
         ClockRange(
             "GPU", detectedGpu.availableHz, draftProfile.gpuMinHz ?: detectedGpu.hwMinHz,
             draftProfile.gpuMaxHz ?: detectedGpu.hwMaxHz, gpuCap,
@@ -409,11 +414,7 @@ fun ClockEditor(
     )
     if (editable && tuningAvailable && (!draftProfile.isDefault || tuningEnabled)) Text(
         "Reset to stock and disable",
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
-            tuningEnabled = false
-            perfPrefs.edit().putBoolean("manual_tuning_$scopeKey", false).apply()
-            applyClockChange(PerfTuner.PerfProfile())
-        }.padding(8.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { disableTuning() }.padding(8.dp),
         style = label(12.sp, 600), color = cs.error,
     )
     if (showEnableCautionDialog && tuningAvailable) ClockWarningCard(
